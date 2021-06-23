@@ -28,6 +28,8 @@ def make_label_csv(input_path,csv_path):
 
 if __name__ == "__main__":
   
-  input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Adver_Material/train'
-  csv_path = './csv_file/adver_material.csv'
+  # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Adver_Material/train'
+  # csv_path = './csv_file/adver_material.csv'
+  input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Crop_Growth/train'
+  csv_path = './csv_file/crop_growth.csv'
   make_label_csv(input_path,csv_path)

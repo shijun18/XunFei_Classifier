@@ -6,10 +6,14 @@ __all__ = ['resnet18','resnet34', 'resnet50','resnest18','resnest50','se_resnet1
 
 data_config = {
     'Adver_Material':'./converter/csv_file/adver_material.csv',
+    'Crop_Growth':'./converter/csv_file/crop_growth.csv',
+    'Photo_Guide':'./converter/csv_file/photo_guide.csv',
 }
 
 num_classes = {
-    'Adver_Material':137
+    'Adver_Material':137,
+    'Crop_Growth':4,
+    'Photo_Guide':11
 }
 
 TASK = 'Adver_Material'
@@ -26,7 +30,6 @@ TTA_TIMES = 18
 
 
 NUM_CLASSES = num_classes[TASK]
-from PIL.Image import NONE
 from utils import get_weight_path,get_weight_list
 
 CSV_PATH = data_config[TASK]
@@ -43,10 +46,14 @@ else:
 
 MEAN = {
     'Adver_Material':None,
+    'Crop_Growth':None,
+    'Photo_Guide':None
 }
 
 STD = {
     'Adver_Material':None,
+    'Crop_Growth':None,
+    'Photo_Guide':None
 }
 
 # Arguments when trainer initial
