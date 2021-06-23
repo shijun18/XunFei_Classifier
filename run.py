@@ -3,19 +3,16 @@ import argparse
 from trainer import Pet_Classifier
 import pandas as pd
 from data_utils.csv_reader import csv_reader_single
-from config import INIT_TRAINER, SETUP_TRAINER, VERSION, CURRENT_FOLD, FOLD_NUM, WEIGHT_PATH_LIST, TTA_TIMES
+from config import INIT_TRAINER, SETUP_TRAINER,TASK
+from config import VERSION, CURRENT_FOLD, FOLD_NUM, WEIGHT_PATH_LIST, TTA_TIMES, CSV_PATH
 
 import time
-import torch
 import numpy as np
 import random
 
-from analysis.pre_process import get_class_split_multiply,get_cross_val_by_class
-
-RULE = {0:"AD",
-        1:"NC",
-        2:"MCI"
-        }
+KEY = {
+    'Adver_Material':['image_id','category_id']
+}
 
 def get_cross_validation(path_list, fold_num, current_fold):
 
@@ -47,7 +44,7 @@ def get_parameter_number(net):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--mode', default='train-cross', choices=["train-cross", "inf-cross", "train", "test", "inf"],
+    parser.add_argument('-m', '--mode', default='train-cross', choices=["train-cross", "inf-cross", "train", "inf"],
                         help='choose the mode', type=str)
     parser.add_argument('-s', '--save', default='no', choices=['no', 'n', 'yes', 'y'],
                         help='save the forward middle features or not', type=str)
@@ -58,7 +55,7 @@ if __name__ == "__main__":
     label_dict = {}
     # Set data path & classifier
     
-    pre_csv_path = './converter/pre_shuffle_label.csv'
+    pre_csv_path = CSV_PATH
     pre_label_dict = csv_reader_single(pre_csv_path, key_col='id', value_col='label')
 
     label_dict.update(pre_label_dict)
@@ -124,48 +121,12 @@ if __name__ == "__main__":
         print('run time:%.4f' % (time.time()-start_time))
     ###############################################
 
-    # Testing
-    ###############################################
-    elif args.mode == 'test':
-        path_list = list(label_dict.keys())
-        random.shuffle(path_list)
-        test_path = path_list[10000:]
-        save_path = './analysis/result/{}_test.csv'.format(VERSION)
-
-        start_time = time.time()
-        if args.save == 'no' or args.save == 'n':
-            result, _, _ = classifier.test(test_path, label_dict)
-            print('run time:%.4f' % (time.time()-start_time))
-        else:
-            result, feature_in, feature_out = classifier.test(
-                test_path, label_dict, hook_fn_forward=True)
-            print('run time:%.4f' % (time.time()-start_time))
-            # save the avgpool output
-            print(feature_in.shape, feature_out.shape)
-            feature_dir = './analysis/mid_feature/{}'.format(VERSION)
-            if not os.path.exists(feature_dir):
-                os.makedirs(feature_dir)
-            from converter.common_utils import save_as_hdf5
-            for i in range(len(test_path)):
-                name = os.path.basename(test_path[i])
-                feature_path = os.path.join(feature_dir, name)
-                save_as_hdf5(feature_in[i], feature_path, 'feature_in')
-                save_as_hdf5(feature_out[i], feature_path, 'feature_out')
-        info = {}
-        info['id'] = test_path
-        info['label'] = result['true']
-        info['pred'] = result['pred']
-        info['prob'] = result['prob']
-        csv_file = pd.DataFrame(info)
-        csv_file.to_csv(save_path, index=False)
-    ###############################################
-
     # Inference
     ###############################################
     elif args.mode == 'inf':
         test_path = [os.path.join(args.path, case)
                      for case in os.listdir(args.path)]
-        save_path = './analysis/result/{}_submission.csv'.format(VERSION)
+        save_path = './analysis/result/{}/{}/submission.csv'.format(TASK,VERSION)
 
         start_time = time.time()
 
@@ -173,10 +134,10 @@ if __name__ == "__main__":
         print('run time:%.4f' % (time.time()-start_time))
 
         info = {}
-        info['uuid'] = [os.path.splitext(os.path.basename(case))[
+        info[KEY[TASK][0]] = [os.path.splitext(os.path.basename(case))[
             0] for case in test_path]
-        info['label'] = [RULE[case] for case in result['pred']]
-        info['prob'] = result['prob']
+        info[KEY[TASK][1]] = [int(case) for case in result['pred']]
+        # info['prob'] = result['prob']
         csv_file = pd.DataFrame(info)
         csv_file.to_csv(save_path, index=False)
     ###############################################
@@ -186,8 +147,8 @@ if __name__ == "__main__":
     elif args.mode == 'inf-cross':
         test_path = [os.path.join(args.path, case)
                      for case in os.listdir(args.path)]
-        save_path_vote = './analysis/result/{}_new_submission_vote.csv'.format(VERSION)
-        save_path = './analysis/result/{}_new_submission_ave.csv'.format(VERSION)
+        save_path_vote = './analysis/result/{}/{}/submission_vote.csv'.format(TASK,VERSION)
+        save_path = './analysis/result/{}/{}/submission_ave.csv'.format(TASK,VERSION)
 
         result = {
             'pred': [],
@@ -219,16 +180,16 @@ if __name__ == "__main__":
         print('run time:%.4f' % (time.time()-start_time))
 
         info = {}
-        info['uuid'] = [os.path.splitext(os.path.basename(case))[0] for case in test_path]
-        info['label'] = [RULE[case] for case in result['pred']]
-        info['prob'] = result['prob']
+        info[KEY[TASK][0]] = [os.path.splitext(os.path.basename(case))[0] for case in test_path]
+        info[KEY[TASK][1]] = [int(case) for case in result['pred']]
+        # info['prob'] = result['prob']
         csv_file = pd.DataFrame(info)
         csv_file.to_csv(save_path, index=False)
 
         info = {}
-        info['uuid'] = [os.path.splitext(os.path.basename(case))[0] for case in test_path]
-        info['label'] = [RULE[case] for case in result['vote_pred']]
-        info['prob'] = result['prob']
+        info[KEY[TASK][0]] = [os.path.splitext(os.path.basename(case))[0] for case in test_path]
+        info[KEY[TASK][1]] = [int(case) for case in result['vote_pred']]
+        # info['prob'] = result['prob']
         csv_file = pd.DataFrame(info)
         csv_file.to_csv(save_path_vote, index=False)
     ###############################################

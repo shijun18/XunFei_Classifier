@@ -128,7 +128,7 @@ class Pet_Classifier(object):
             tr.RandomHorizontalFlip(p=0.5),
             tr.RandomVerticalFlip(p=0.5),
             tr.ToTensor(),
-            tr.Normalize(self.mean, self.std)
+            # tr.Normalize(self.mean, self.std)
         ])
 
         train_dataset = DataGenerator(
@@ -287,7 +287,7 @@ class Pet_Classifier(object):
             tr.RandomHorizontalFlip(p=0.5),
             tr.RandomVerticalFlip(p=0.5),
             tr.ToTensor(),
-            tr.Normalize(self.mean, self.std)
+            # tr.Normalize(self.mean, self.std)
         ])
 
         val_dataset = DataGenerator(
@@ -356,7 +356,7 @@ class Pet_Classifier(object):
             tr.RandomHorizontalFlip(p=0.5),
             tr.RandomVerticalFlip(p=0.5),
             tr.ToTensor(),
-            tr.Normalize(self.mean, self.std)
+            # tr.Normalize(self.mean, self.std)
         ])
 
         test_dataset = DataGenerator(
@@ -421,7 +421,7 @@ class Pet_Classifier(object):
             tr.RandomHorizontalFlip(p=0.5),
             tr.RandomVerticalFlip(p=0.5),
             tr.ToTensor(),
-            tr.Normalize(self.mean, self.std)
+            # tr.Normalize(self.mean, self.std)
         ])
 
         test_dataset = DataGenerator(test_path, channels=self.channels, transform=test_transformer)
@@ -470,7 +470,7 @@ class Pet_Classifier(object):
             tr.RandomHorizontalFlip(p=0.5),
             tr.RandomVerticalFlip(p=0.5),
             tr.ToTensor(),
-            tr.Normalize(self.mean, self.std)
+            # tr.Normalize(self.mean, self.std)
         ])
 
         test_dataset = DataGenerator(test_path, channels=self.channels, transform=None)

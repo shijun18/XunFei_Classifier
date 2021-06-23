@@ -3,12 +3,6 @@ import pandas as pd
 import glob
 import random
 
-RULE = {"AD":0,
-        "NC":1,
-        "MCI":2
-        }
-
-
 
 def make_label_csv(input_path,csv_path):
   '''
@@ -17,12 +11,10 @@ def make_label_csv(input_path,csv_path):
   '''
   info = []
   for subdir in os.scandir(input_path):
-    # print(subdir.name)
-    for subsubdir in os.scandir(subdir.path):
-      index = RULE[subsubdir.name]
-      path_list = glob.glob(os.path.join(subsubdir.path,"*.*g"))
-      sub_info = [[item,index] for item in path_list]
-      info.extend(sub_info)
+    index = subdir.name
+    path_list = glob.glob(os.path.join(subdir.path,"*.*g"))
+    sub_info = [[item,index] for item in path_list]
+    info.extend(sub_info)
   
   random.shuffle(info)
   # print(len(info))
@@ -36,11 +28,6 @@ def make_label_csv(input_path,csv_path):
 
 if __name__ == "__main__":
   
-  input_path = '/staff/shijun/torch_projects/AD_CLS/dataset/pre_data/train'
-  csv_path = './pre_shuffle_label.csv'
-  make_label_csv(input_path,csv_path)
-
-  input_path = '/staff/shijun/torch_projects/AD_CLS/dataset/pre_crop_data/train'
-  csv_path = './pre_shuffle_crop_label.csv'
-
+  input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Adver_Material/train'
+  csv_path = './csv_file/adver_material.csv'
   make_label_csv(input_path,csv_path)
