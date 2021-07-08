@@ -22,7 +22,7 @@ model_urls = {
 
 class VGG(nn.Module):
 
-    def __init__(self, cfg, num_classes=2, input_channels=1, init_weights=True):
+    def __init__(self, cfg, num_classes=2, input_channels=1, init_weights=True,final_drop=0.0):
         super(VGG, self).__init__()
         self.input_channels = input_channels
         self.features = self._make_layers(cfg)
@@ -36,6 +36,7 @@ class VGG(nn.Module):
             nn.Dropout(),
             nn.Linear(256, num_classes),
         )
+        self.drop = nn.Dropout(final_drop) if final_drop > 0.0 else None
         if init_weights:
             self._initialize_weights()
 
@@ -43,6 +44,8 @@ class VGG(nn.Module):
         x = self.features(x)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
+        if self.drop:
+            x = self.drop(x)
         x = self.classifier(x)
         return x
 

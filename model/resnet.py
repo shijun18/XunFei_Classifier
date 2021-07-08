@@ -1,3 +1,4 @@
+from pandas.core.algorithms import mode
 import torch
 import torch.nn as nn
 try:
@@ -12,15 +13,15 @@ __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
 
 
 model_urls = {
-    'resnet18': None,
-    'resnet34': None,
-    'resnet50': None,
-    'resnet101': None,
-    'resnet152': None,
-    'resnext50_32x4d': None,
-    'resnext101_32x8d': None,
-    'wide_resnet50_2': None,
-    'wide_resnet101_2': None,
+    'resnet18': 'https://download.pytorch.org/models/resnet18-f37072fd.pth',
+    'resnet34': 'https://download.pytorch.org/models/resnet34-b627a593.pth',
+    'resnet50': 'https://download.pytorch.org/models/resnet50-0676ba61.pth',
+    'resnet101': 'https://download.pytorch.org/models/resnet101-63fe2227.pth',
+    'resnet152': 'https://download.pytorch.org/models/resnet152-394f9c45.pth',
+    'resnext50_32x4d': 'https://download.pytorch.org/models/resnext50_32x4d-7cdf4587.pth',
+    'resnext101_32x8d': 'https://download.pytorch.org/models/resnext101_32x8d-8ba56ff5.pth',
+    'wide_resnet50_2': 'https://download.pytorch.org/models/wide_resnet50_2-95faca4d.pth',
+    'wide_resnet101_2': 'https://download.pytorch.org/models/wide_resnet101_2-32ee1156.pth',
 }
 
 
@@ -127,7 +128,7 @@ class Bottleneck(nn.Module):
 class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=2, input_channels=1, zero_init_residual=False,
-                 groups=1, width_per_group=64, replace_stride_with_dilation=None,
+                 groups=1, final_drop=0.5,width_per_group=64, replace_stride_with_dilation=None,
                  norm_layer=None):
         super(ResNet, self).__init__()
         if norm_layer is None:
@@ -155,7 +156,8 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.drop = nn.Dropout(final_drop) if final_drop > 0.0 else None
+        self.fc = nn.Linear(512 * block.expansion, 1000)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -212,6 +214,8 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
+        if self.drop:
+            x = self.drop(x)
         x = self.fc(x)
 
         return x
@@ -226,6 +230,7 @@ def _resnet(arch, block, layers, pretrained, progress, **kwargs):
         state_dict = load_state_dict_from_url(model_urls[arch],
                                               progress=progress)
         model.load_state_dict(state_dict)
+    model.fc = nn.Linear(512 * block.expansion, kwargs['num_classes'])
     return model
 
 

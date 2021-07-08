@@ -67,7 +67,7 @@ def BasicBlock(cin, cout, n):
 
 class SimpleNet(nn.Module):
 
-    def __init__(self, block, layers, num_features, num_classes=2, input_channels=1):
+    def __init__(self, block, layers, num_features, num_classes=2, input_channels=1,final_drop=0):
         """
         Construct a SimpleNet
         """
@@ -80,6 +80,7 @@ class SimpleNet(nn.Module):
             block(num_features[3], num_features[4], layers[4]),
         )
         self.bridge = nn.AdaptiveMaxPool2d((1, 1))
+        self.drop = nn.Dropout(final_drop) if final_drop > 0.0 else None
         self.cls = nn.Sequential(
             nn.Linear(num_features[4], num_classes)
         )
@@ -88,6 +89,8 @@ class SimpleNet(nn.Module):
         x = self.backbone(x)
         x = self.bridge(x)
         x = torch.flatten(x, 1)
+        if self.drop:
+            x = self.drop(x)
         x = self.cls(x)
         return x
 

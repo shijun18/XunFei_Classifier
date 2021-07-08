@@ -93,7 +93,7 @@ class Bottle2neckX(nn.Module):
 
 
 class Res2NeXt(nn.Module):
-    def __init__(self, block, baseWidth, cardinality, layers, input_channels=3, num_classes=2, scale=4):
+    def __init__(self, block, baseWidth, cardinality, layers, input_channels=3, num_classes=2, scale=4,final_drop=0.0):
         """ Constructor
         Args:
             baseWidth: baseWidth for ResNeXt.
@@ -120,6 +120,7 @@ class Res2NeXt(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], 2)
         self.layer4 = self._make_layer(block, 512, layers[3], 2)
         self.avgpool = nn.AdaptiveAvgPool2d(1)  
+        self.drop = nn.Dropout(final_drop) if final_drop > 0.0 else None
         self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
@@ -158,6 +159,8 @@ class Res2NeXt(nn.Module):
         x = self.layer4(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
+        if self.drop:
+            x = self.drop(x)
         x = self.fc(x)
 
         return x

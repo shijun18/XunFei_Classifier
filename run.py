@@ -11,7 +11,8 @@ import numpy as np
 import random
 
 KEY = {
-    'Adver_Material':['image_id','category_id']
+    'Adver_Material':['image_id','category_id'],
+    'Crop_Growth':['image_id','category_id']
 }
 
 def get_cross_validation(path_list, fold_num, current_fold):
@@ -48,7 +49,7 @@ if __name__ == "__main__":
                         help='choose the mode', type=str)
     parser.add_argument('-s', '--save', default='no', choices=['no', 'n', 'yes', 'y'],
                         help='save the forward middle features or not', type=str)
-    parser.add_argument('-p', '--path', default='/staff/shijun/torch_projects/PET_CLS/dataset/post_data/val/AD&CN&MCI',
+    parser.add_argument('-p', '--path', default='/staff/shijun/torch_projects/XunFei_Classifier/dataset',
                         help='the directory path of input image', type=str)
     args = parser.parse_args()
     
@@ -123,73 +124,81 @@ if __name__ == "__main__":
 
     # Inference
     ###############################################
-    elif args.mode == 'inf':
-        test_path = [os.path.join(args.path, case)
-                     for case in os.listdir(args.path)]
-        save_path = './analysis/result/{}/{}/submission.csv'.format(TASK,VERSION)
+    elif 'inf' in args.mode:
+        save_dir = './analysis/result/{}/{}'.format(TASK,VERSION)
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+        if args.mode == 'inf':
+            test_id = os.listdir(args.path)
+            test_id.sort(key=lambda x:eval(x.split('.')[0].split('_')[-1]))
+            test_path = [os.path.join(args.path, case)
+                        for case in test_id]
+            save_path = os.path.join(save_dir,f'submission_fold{CURRENT_FOLD}.csv')
 
-        start_time = time.time()
+            start_time = time.time()
 
-        result = classifier.inference(test_path)
-        print('run time:%.4f' % (time.time()-start_time))
+            result = classifier.inference(test_path)
+            print('run time:%.4f' % (time.time()-start_time))
 
-        info = {}
-        info[KEY[TASK][0]] = [os.path.splitext(os.path.basename(case))[
-            0] for case in test_path]
-        info[KEY[TASK][1]] = [int(case) for case in result['pred']]
-        # info['prob'] = result['prob']
-        csv_file = pd.DataFrame(info)
-        csv_file.to_csv(save_path, index=False)
-    ###############################################
+            info = {}
+            info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
+            info[KEY[TASK][1]] = [int(case) for case in result['pred']]
+            # info['prob'] = result['prob']
+            csv_file = pd.DataFrame(info)
+            csv_file.to_csv(save_path, index=False)
+        ###############################################
 
-    # Inference with cross validation
-    ###############################################
-    elif args.mode == 'inf-cross':
-        test_path = [os.path.join(args.path, case)
-                     for case in os.listdir(args.path)]
-        save_path_vote = './analysis/result/{}/{}/submission_vote.csv'.format(TASK,VERSION)
-        save_path = './analysis/result/{}/{}/submission_ave.csv'.format(TASK,VERSION)
+        # Inference with cross validation
+        ###############################################
+        elif args.mode == 'inf-cross':
+            test_id = os.listdir(args.path)
+            test_id.sort(key=lambda x:eval(x.split('.')[0].split('_')[-1]))
+            test_path = [os.path.join(args.path, case)
+                        for case in test_id]
+            save_path_vote = os.path.join(save_dir,'submission_vote.csv')
+            save_path = os.path.join(save_dir,'submission_ave.csv')
 
-        result = {
-            'pred': [],
-            'vote_pred': [],
-            'prob': []
-        }
+            result = {
+                'pred': [],
+                'vote_pred': [],
+                'prob': []
+            }
 
-        all_prob_output = []
-        all_vote_output = []
+            all_prob_output = []
+            all_vote_output = []
 
-        start_time = time.time()
-        for i, weight_path in enumerate(WEIGHT_PATH_LIST):
-            print("Inference %d fold..." % (i+1))
-            INIT_TRAINER['weight_path'] = weight_path
-            classifier = Pet_Classifier(**INIT_TRAINER)
+            start_time = time.time()
+            for i, weight_path in enumerate(WEIGHT_PATH_LIST):
+                print("Inference %d fold..." % (i+1))
+                print("weight: %s"%weight_path)
+                INIT_TRAINER['weight_path'] = weight_path
+                classifier = Pet_Classifier(**INIT_TRAINER)
 
-            prob_output, vote_output = classifier.inference_tta(
-                test_path, TTA_TIMES)
-            all_prob_output.append(prob_output)
-            all_vote_output.append(vote_output)
+                prob_output, vote_output = classifier.inference_tta(
+                    test_path, TTA_TIMES)
+                all_prob_output.append(prob_output)
+                all_vote_output.append(vote_output)
 
-        avg_output = np.mean(all_prob_output, axis=0)
-        result['prob'].extend(avg_output.tolist())
+            avg_output = np.mean(all_prob_output, axis=0)
+            result['prob'].extend(avg_output.tolist())
 
-        result['pred'].extend(np.argmax(avg_output, 1).tolist())
-        vote_array = np.asarray(all_vote_output).astype(int)
-        result['vote_pred'].extend([max(list(vote_array[:,i]),key=list(vote_array[:,i]).count) for i in range(vote_array.shape[1])])
+            result['pred'].extend(np.argmax(avg_output, 1).tolist())
+            vote_array = np.asarray(all_vote_output).astype(int)
+            result['vote_pred'].extend([max(list(vote_array[:,i]),key=list(vote_array[:,i]).count) for i in range(vote_array.shape[1])])
 
-        print('run time:%.4f' % (time.time()-start_time))
+            print('run time:%.4f' % (time.time()-start_time))
 
-        info = {}
-        info[KEY[TASK][0]] = [os.path.splitext(os.path.basename(case))[0] for case in test_path]
-        info[KEY[TASK][1]] = [int(case) for case in result['pred']]
-        # info['prob'] = result['prob']
-        csv_file = pd.DataFrame(info)
-        csv_file.to_csv(save_path, index=False)
+            info = {}
+            info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
+            info[KEY[TASK][1]] = [int(case) for case in result['pred']]
+            # info['prob'] = result['prob']
+            csv_file = pd.DataFrame(info)
+            csv_file.to_csv(save_path, index=False)
 
-        info = {}
-        info[KEY[TASK][0]] = [os.path.splitext(os.path.basename(case))[0] for case in test_path]
-        info[KEY[TASK][1]] = [int(case) for case in result['vote_pred']]
-        # info['prob'] = result['prob']
-        csv_file = pd.DataFrame(info)
-        csv_file.to_csv(save_path_vote, index=False)
-    ###############################################
+            info = {}
+            info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
+            info[KEY[TASK][1]] = [int(case) for case in result['vote_pred']]
+            # info['prob'] = result['prob']
+            csv_file = pd.DataFrame(info)
+            csv_file.to_csv(save_path_vote, index=False)
+        ###############################################

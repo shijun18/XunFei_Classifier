@@ -247,7 +247,7 @@ class ResNet(nn.Module):
                  deep_stem=False, stem_width=64, avg_down=False,
                  rectified_conv=False, rectify_avg=False,
                  avd=False, avd_first=False,
-                 final_drop=0.0, dropblock_prob=0,
+                 final_drop=0.5, dropblock_prob=0,
                  last_gamma=False, norm_layer=nn.BatchNorm2d):
         self.cardinality = groups
         self.bottleneck_width = bottleneck_width

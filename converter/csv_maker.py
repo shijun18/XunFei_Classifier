@@ -5,10 +5,7 @@ import random
 
 
 def make_label_csv(input_path,csv_path):
-  '''
-  Make label csv file.
-  label rule: AD->0, NC->1, MCI->2
-  '''
+
   info = []
   for subdir in os.scandir(input_path):
     index = subdir.name

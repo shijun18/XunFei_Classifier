@@ -96,7 +96,7 @@ class Bottle2neck(nn.Module):
 
 class Res2Net(nn.Module):
 
-    def __init__(self, block, layers, baseWidth = 26, scale = 4, input_channels=3, num_classes=2):
+    def __init__(self, block, layers, baseWidth = 26, scale = 4, input_channels=3, num_classes=2,final_drop=0.0):
         self.inplanes = 64
         super(Res2Net, self).__init__()
         self.baseWidth = baseWidth
@@ -112,6 +112,8 @@ class Res2Net(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.drop = nn.Dropout(final_drop) if final_drop > 0.0 else None
+        
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -151,6 +153,8 @@ class Res2Net(nn.Module):
 
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
+        if self.drop:
+            x = self.drop(x)
         x = self.fc(x)
 
         return x

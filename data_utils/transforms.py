@@ -29,6 +29,33 @@ class DeNoise(object):
 class AddNoise(object):
 
     def __call__(self, image):
-        image = random_noise(np.array(image),mode='s&p') 
-        image = Image.fromarray(image*255)
+        if image.mode == 'RGB':
+            image = random_noise(np.array(image)[...,0],mode='s&p') 
+            image = Image.fromarray((image*255).astype(np.uint8)).convert('RGB')
+        else:
+            image = random_noise(np.array(image),mode='s&p') 
+            image = Image.fromarray((image*255).astype(np.uint8)).convert('L')
         return image
+
+
+class SquarePad(object):
+    
+    def __call__(self, image):
+        H = W = max(image.size)
+        image_array = np.asarray(image)
+        h,w = image_array.shape[:2]
+        off_h = (H-h) // 2 # >= 0
+        off_w = (W-w) // 2 # >= 0
+        
+        if h != H or w != W:
+            if image.mode == 'RGB':
+                image_array = np.pad(image_array,((off_h,off_h),(off_w,off_w),(0,0)),'constant')
+            else:
+                image_array = np.pad(image_array,((off_h,off_h),(off_w,off_w)),'constant')
+            new_img = Image.fromarray(image_array)
+        else:
+            new_img = image
+
+        return new_img
+
+        

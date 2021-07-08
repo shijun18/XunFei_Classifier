@@ -19,7 +19,7 @@ from PIL import Image
 from utils import remove_dir, make_dir
 from torch.cuda.amp import autocast as autocast
 from torch.cuda.amp import GradScaler
-from data_utils.transforms import RandomRotate,DeNoise,AddNoise
+from data_utils.transforms import RandomRotate,DeNoise,SquarePad,AddNoise
 
 # GPU version.
 
@@ -44,7 +44,8 @@ class Pet_Classifier(object):
 
     def __init__(self, net_name=None, gamma=0.1, lr=1e-3, n_epoch=1, channels=1, num_classes=3, input_shape=None, crop=48,
                  batch_size=6, num_workers=0, device=None, pre_trained=False, weight_path=None, weight_decay=0.,
-                 momentum=0.95, mean=(0.105393,), std=(0.203002,), milestones=None,use_fp16=False):
+                 momentum=0.95, mean=(0.105393,), std=(0.203002,), milestones=None,use_fp16=False,transform=None,
+                 drop_rate=0.0,external_pretrained=False):
         super(Pet_Classifier, self).__init__()
 
         self.net_name = net_name
@@ -74,13 +75,36 @@ class Pet_Classifier(object):
         self.gamma = gamma
         self.milestones = milestones
         self.use_fp16 = use_fp16
+        self.drop_rate = drop_rate
+        self.external_pretrained = external_pretrained
 
         os.environ['CUDA_VISIBLE_DEVICES'] = self.device
         self.net = self._get_net(self.net_name)
         if self.pre_trained:
             self._get_pre_trained(self.weight_path)
-            self.loss_threshold = eval(os.path.splitext(
-                self.weight_path.split(':')[-1])[0])
+            self.loss_threshold = eval(os.path.splitext(os.path.basename(
+                self.weight_path))[0].split(':')[3].split('-')[0])
+            print('loss threshold:%.4f'%self.loss_threshold)
+            self.metric = eval(os.path.splitext(os.path.basename(
+                self.weight_path))[0].split(':')[-1])
+            print('metric threshold:%.4f'%self.metric)
+        self.transform_list = [
+            DeNoise(3),
+            tr.Resize(size=self.input_shape),
+            tr.RandomAffine(0,(0.1,0.1),(0.8,1.2)),
+            tr.ColorJitter(brightness=.5, hue=.3, contrast=.5),
+            tr.RandomPerspective(distortion_scale=0.6, p=0.5),
+            RandomRotate([-15, -10, -5, 0, 5, 10, 15]),
+            tr.RandomHorizontalFlip(p=0.5),
+            tr.RandomVerticalFlip(p=0.5),
+            tr.ToTensor(),
+            tr.Normalize(self.mean, self.std),
+            SquarePad(),
+            AddNoise(),
+            tr.CenterCrop(size=self.input_shape)
+        ]
+
+        self.transform = [self.transform_list[i-1] for i in transform]
 
     def trainer(self, train_path, val_path, label_dict, cur_fold, output_dir=None, log_dir=None, optimizer='Adam',
                 loss_fun='Cross_Entropy', class_weight=None, lr_scheduler=None):
@@ -121,15 +145,7 @@ class Pet_Classifier(object):
             net = DataParallel(net)
 
         # dataloader setting
-        train_transformer = transforms.Compose([
-            DeNoise(3),
-            tr.Resize(size=self.input_shape),
-            # RandomRotate([-135, -90, -45, 0, 45, 90, 135, 180]),
-            tr.RandomHorizontalFlip(p=0.5),
-            tr.RandomVerticalFlip(p=0.5),
-            tr.ToTensor(),
-            # tr.Normalize(self.mean, self.std)
-        ])
+        train_transformer = transforms.Compose(self.transform)
 
         train_dataset = DataGenerator(
             train_path, label_dict, channels=self.channels, transform=train_transformer)
@@ -150,9 +166,9 @@ class Pet_Classifier(object):
         optimizer = self._get_optimizer(optimizer, net, lr, weight_decay, momentum)
         scaler = GradScaler()
 
-        if self.pre_trained:
-            checkpoint = torch.load(self.weight_path)
-            optimizer.load_state_dict(checkpoint['optimizer'])
+        # if self.pre_trained:
+        #     checkpoint = torch.load(self.weight_path)
+        #     optimizer.load_state_dict(checkpoint['optimizer'])
 
         if lr_scheduler is not None:
             lr_scheduler = self._get_lr_scheduler(lr_scheduler, optimizer)
@@ -162,13 +178,13 @@ class Pet_Classifier(object):
         max_acc = 0.
 
 
-        early_stopping = EarlyStopping(patience=20,verbose=True,monitor='val_acc',op_type='max')
+        early_stopping = EarlyStopping(patience=20,verbose=True,monitor='val_acc',best_score=self.metric,op_type='max')
         for epoch in range(self.start_epoch, self.n_epoch):
             train_loss, train_acc = self._train_on_epoch(epoch, net, loss, optimizer, train_loader,scaler)
 
-            torch.cuda.empty_cache()
-
             val_loss, val_acc = self._val_on_epoch(epoch, net, loss, val_path, label_dict)
+
+            torch.cuda.empty_cache()
 
             if lr_scheduler is not None:
                 lr_scheduler.step()
@@ -280,15 +296,7 @@ class Pet_Classifier(object):
 
         net.eval()
 
-        val_transformer = transforms.Compose([
-            DeNoise(3),
-            tr.Resize(size=self.input_shape),
-            # RandomRotate([-135, -90, -45, 0, 45, 90, 135]),
-            tr.RandomHorizontalFlip(p=0.5),
-            tr.RandomVerticalFlip(p=0.5),
-            tr.ToTensor(),
-            # tr.Normalize(self.mean, self.std)
-        ])
+        val_transformer = transforms.Compose(self.transform)
 
         val_dataset = DataGenerator(
             val_path, label_dict, channels=self.channels, transform=val_transformer)
@@ -352,10 +360,13 @@ class Pet_Classifier(object):
 
         test_transformer = transforms.Compose([
             tr.Resize(size=self.input_shape),
-            # RandomRotate([-135, -90, -45, 0, 45, 90, 135, 180]),
+            tr.RandomAffine(0,(0.1,0.1),(0.8,1.2)),
+            tr.ColorJitter(brightness=.5, hue=.3),
+            tr.RandomPerspective(distortion_scale=0.6, p=0.5),
+            RandomRotate([-45, -30, -15, 0, 15, 30, 45]),
             tr.RandomHorizontalFlip(p=0.5),
             tr.RandomVerticalFlip(p=0.5),
-            tr.ToTensor(),
+            tr.ToTensor()
             # tr.Normalize(self.mean, self.std)
         ])
 
@@ -415,14 +426,7 @@ class Pet_Classifier(object):
         net = net.cuda()
         net.eval()
 
-        test_transformer = transforms.Compose([
-            tr.Resize(size=self.input_shape),
-            # RandomRotate([-135, -90, -45, 0, 45, 90, 135, 180]),
-            tr.RandomHorizontalFlip(p=0.5),
-            tr.RandomVerticalFlip(p=0.5),
-            tr.ToTensor(),
-            # tr.Normalize(self.mean, self.std)
-        ])
+        test_transformer = transforms.Compose(self.transform)
 
         test_dataset = DataGenerator(test_path, channels=self.channels, transform=test_transformer)
 
@@ -464,14 +468,7 @@ class Pet_Classifier(object):
         net = net.cuda()
         net.eval()
 
-        test_transformer = transforms.Compose([
-            tr.Resize(size=self.input_shape),
-            # RandomRotate([-135, -90, -45, 0, 45, 90, 135, 180]),
-            tr.RandomHorizontalFlip(p=0.5),
-            tr.RandomVerticalFlip(p=0.5),
-            tr.ToTensor(),
-            # tr.Normalize(self.mean, self.std)
-        ])
+        test_transformer = transforms.Compose(self.transform)
 
         test_dataset = DataGenerator(test_path, channels=self.channels, transform=None)
 
@@ -511,64 +508,68 @@ class Pet_Classifier(object):
     def _get_net(self, net_name):
         if net_name == 'resnet18':
             from model.resnet import resnet18
-            net = resnet18(input_channels=self.channels,
-                           num_classes=self.num_classes)
+            net = resnet18(pretrained=self.external_pretrained,input_channels=self.channels,
+                           num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'resnet34':
             from model.resnet import resnet34
-            net = resnet34(input_channels=self.channels,
-                           num_classes=self.num_classes)
+            net = resnet34(pretrained=self.external_pretrained,input_channels=self.channels,
+                           num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'resnet50':
             from model.resnet import resnet50
-            net = resnet50(input_channels=self.channels,
-                           num_classes=self.num_classes)
+            net = resnet50(pretrained=self.external_pretrained,input_channels=self.channels,
+                           num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'resnest18':
             from model.resnest import resnest18
-            net = resnest18(input_channels=self.channels,
-                           num_classes=self.num_classes)
+            net = resnest18(pretrained=self.external_pretrained,input_channels=self.channels,
+                           num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'resnest50':
             from model.resnest import resnest50
-            net = resnest50(input_channels=self.channels,
-                           num_classes=self.num_classes)
+            net = resnest50(pretrained=self.external_pretrained,input_channels=self.channels,
+                           num_classes=self.num_classes,final_drop=self.drop_rate)
+        elif net_name == 'resnext101_32x8d':
+            from model.resnet import resnext101_32x8d
+            net = resnext101_32x8d(pretrained=self.external_pretrained,input_channels=self.channels,
+                           num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'se_resnet18':
             from model.se_resnet import se_resnet18
             net = se_resnet18(input_channels=self.channels,
-                              num_classes=self.num_classes)
+                              num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'se_resnet10':
             from model.se_resnet import se_resnet10
             net = se_resnet10(input_channels=self.channels,
-                              num_classes=self.num_classes)
+                              num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'simple_net':
             from model.simple_net import simple_net
             net = simple_net(input_channels=self.channels,
-                             num_classes=self.num_classes)
+                             num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'tiny_net':
             from model.simple_net import tiny_net
             net = tiny_net(input_channels=self.channels,
-                           num_classes=self.num_classes)
+                           num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'densenet121':
             from model.densenet import densenet121
             net = densenet121(input_channels=self.channels,
-                              num_classes=self.num_classes)
+                              num_classes=self.num_classes,drop_rate=self.drop_rate)
         elif net_name == 'vgg16':
             from model.vgg import vgg16
             net = vgg16(input_channels=self.channels,
-                        num_classes=self.num_classes)
+                        num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'res2net50':
             from model.res2net import res2net50
             net = res2net50(input_channels=self.channels,
-                        	num_classes=self.num_classes)
+                        	num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'res2net18':
                 from model.res2net import res2net18
                 net = res2net18(input_channels=self.channels,
-                              num_classes=self.num_classes)
+                              num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'res2next50':
                 from model.res2next import res2next50
                 net = res2next50(input_channels=self.channels,
-                              num_classes=self.num_classes)
+                              num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'res2next18':
                 from model.res2next import res2next18
                 net = res2next18(input_channels=self.channels,
-                                num_classes=self.num_classes)
+                                num_classes=self.num_classes,final_drop=self.drop_rate)
         elif 'efficientnet' in net_name:
                 from model.efficientnet import EfficientNet
                 net = EfficientNet.from_name(model_name=net_name,
@@ -583,6 +584,18 @@ class Pet_Classifier(object):
 
         if loss_fun == 'Cross_Entropy':
             loss = nn.CrossEntropyLoss(class_weight)
+
+        elif loss_fun == 'SoftCrossEntropy':
+            from losses.crossentropy import SoftCrossEntropy
+            loss = SoftCrossEntropy(classes=self.num_classes,smoothing=0.1,weight=class_weight)
+
+        elif loss_fun == 'TopkCrossEntropy':
+            from losses.crossentropy import SoftCrossEntropy
+            loss = SoftCrossEntropy(classes=self.num_classes,smoothing=0.0,weight=class_weight,reduction='topk',k=0.8)
+
+        elif loss_fun == 'TopkSoftCrossEntropy':
+            from losses.crossentropy import SoftCrossEntropy
+            loss = SoftCrossEntropy(classes=self.num_classes,smoothing=0.1,weight=class_weight,reduction='topk',k=0.8)
 
         return loss
 
@@ -607,6 +620,9 @@ class Pet_Classifier(object):
         elif lr_scheduler == 'CosineAnnealingLR':
             lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                             optimizer, T_max=5)
+        elif lr_scheduler == 'CosineAnnealingWarmRestarts':
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+                        optimizer, 5, T_mult=2)
         return lr_scheduler
 
     def _get_pre_trained(self, weight_path):
@@ -658,7 +674,7 @@ def accuracy(output, target, topk=(1,)):
 
 class EarlyStopping(object):
     """Early stops the training if performance doesn't improve after a given patience."""
-    def __init__(self, patience=10, verbose=True, delta=0, monitor='val_loss',op_type='min'):
+    def __init__(self, patience=10, verbose=True, delta=0, monitor='val_loss',best_score=None,op_type='min'):
         """
         Args:
             patience (int): How long to wait after last time performance improved.
@@ -674,7 +690,7 @@ class EarlyStopping(object):
         self.patience = patience
         self.verbose = verbose
         self.counter = 0
-        self.best_score = None
+        self.best_score = best_score
         self.early_stop = False
         self.delta = delta
         self.monitor = monitor

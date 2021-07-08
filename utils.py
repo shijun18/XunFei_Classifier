@@ -13,15 +13,16 @@ def remove_dir(dirpath):
 
 
 
-def get_weight_list(ckpt_path):
+def get_weight_list(ckpt_path,choice=None):
     path_list = []
     for fold in os.scandir(ckpt_path):
+        if choice is not None and eval(str(fold.name)[-1]) not in choice:
+            continue
         if fold.is_dir():
             weight_path = os.listdir(fold.path)
             weight_path.sort(key=lambda x:int(x.split('-')[0].split(':')[-1]))
             path_list.append(os.path.join(fold.path,weight_path[-1]))
             # print(os.path.join(fold.path,weight_path[-1]))
-    
     return path_list
 
 
@@ -29,10 +30,10 @@ def get_weight_list(ckpt_path):
 def get_weight_path(ckpt_path):
 
     if os.path.isdir(ckpt_path):
-        pth_list = glob.glob(os.path.join(ckpt_path,'*.pth'))
+        pth_list = os.listdir(ckpt_path)
         if len(pth_list) != 0:
             pth_list.sort(key=lambda x:int(x.split('-')[0].split(':')[-1]))
-            return pth_list[-1]
+            return os.path.join(ckpt_path,pth_list[-1])
         else:
             return None
     else:
