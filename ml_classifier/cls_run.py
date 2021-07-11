@@ -1,7 +1,7 @@
 import os
 import pandas as pd 
 import pickle
-from ml_trainer import ML_Classifier,params_dict
+from cls_trainer import ML_Classifier,params_dict
 
 from sklearn.metrics import make_scorer
 from sklearn.metrics import accuracy_score,precision_score,f1_score,recall_score,roc_auc_score
@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score,precision_score,f1_score,recall_score
 
 _AVAIL_CLF = ['lasso','knn','svm','decision tree','random forest','extra trees','bagging','mlp','xgboost']
 
-METRICS = {
+METRICS_CLS = {
   'Accuracy':make_scorer(accuracy_score),
   'Recall':make_scorer(recall_score,average='binary',zero_division=0),
   'Precision':make_scorer(precision_score,average='binary',zero_division=0),
@@ -21,7 +21,7 @@ SETUP_TRAINER = {
   'target_key':'label',
   'test_size':0.2,
   'random_state':21,
-  'metric':METRICS,
+  'metric':METRICS_CLS,
   'k_fold':5
 }
 

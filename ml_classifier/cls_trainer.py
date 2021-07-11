@@ -13,7 +13,7 @@ from xgboost import XGBClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split,KFold
 from sklearn.preprocessing import StandardScaler
-
+from sklearn.metrics import mean_absolute_error
 
 
 params_dict = {
@@ -59,7 +59,7 @@ params_dict = {
 }
 
 
-METRICS = {
+METRICS_CLS = {
   'Accuracy':'accuracy',
   'Recall':'recall',
   'Precision':'precision',
