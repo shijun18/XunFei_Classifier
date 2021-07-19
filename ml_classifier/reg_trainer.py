@@ -7,11 +7,12 @@ import lightgbm as lgb
 from sklearn.neural_network import MLPRegressor
 from sklearn.ensemble import RandomForestRegressor,ExtraTreesRegressor
 from sklearn.ensemble import BaggingRegressor
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression,BayesianRidge
 
 from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import train_test_split,KFold
+from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler, MinMaxScaler,PolynomialFeatures
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -31,11 +32,11 @@ params_dict = {
         'n_estimators':range(10,150,10),
     },
     'mlp':{
-        'alpha':[0.001,0.01,0.1],
-        'hidden_layer_sizes':[(5,),(10,),(15,),(20,),(10,10),(7,7,7),(5,5,5,5)],
-        'solver':['lbfgs','sgd', 'adam'],
+        'alpha':[0.01,0.001,0.1],
+        'hidden_layer_sizes':[(10,10)],
+        'solver':['lbfgs'],
         'activation':['identity'],
-        'learning_rate':['constant','invscaling']
+        'learning_rate':['constant']
     },
     # 'xgboost':{
     #     'n_estimators':range(100,150,5),
@@ -47,16 +48,23 @@ params_dict = {
         'n_estimators':[10000],
         'max_depth':[15],
         'learning_rate':[0.05],
-        'subsample':[0.5]
+        'subsample':[0.8]
     },
     'lgb':{
-        'max_depth':[15],
-        'num_leaves':[35],
-        'learning_rate':[0.03],
-        'n_estimators':[5000]
+        'num_leaves': [60],
+        'min_data_in_leaf': [30],
+        'learning_rate': [0.001],
+        "min_child_samples": [30],
+        "feature_fraction": [0.9],
     },
     'lr':{
         'normalize':[False]
+    },
+    'br':{
+        'n_iter':[3000]
+    },
+    'poly':{
+        'fit_intercept':[False]
     }
 }
 
@@ -75,17 +83,33 @@ class ML_Classifier(object):
     self.clf = self._get_clf()  
   
 
-  def trainer(self,train_df,target_key,random_state=21,metric=None,k_fold=5,pred_flag=False,test_df=None,test_csv=None,save_path=None):
+  def trainer(self,train_df,target_key,random_state=21,metric=None,k_fold=5,scaler=False,pred_flag=False,test_df=None,test_csv=None,save_path=None):
     params = self.params
+    if scaler:
+        scale_factor = 10
+        train_df[target_key] = train_df[target_key].apply(lambda x : scale_factor*x)
     fea_list= [f for f in train_df.columns if f != target_key]
-    # print('feature list:',fea_list)
-    kfold = KFold(n_splits=k_fold,shuffle=True,random_state=random_state)
+    print('feature list:',fea_list)
+
+    Y = np.asarray(train_df[target_key])
+    X = np.asarray(train_df[fea_list])
+    test = np.asarray(test_df[fea_list])
     
-    answers = []
-    for fold_num,(train_index,val_index) in enumerate(kfold.split(train_df)):
+    kfold = KFold(n_splits=k_fold,shuffle=True,random_state=random_state)
+    if self.clf_name == 'poly':
+        # poly = PolynomialFeatures(interaction_only=True)
+        poly = PolynomialFeatures()
+        X = poly.fit_transform(X)
+        test = poly.fit_transform(test)
+
+    print(X)
+    print(test)
+    print(X.shape,test.shape)
+    predictions = []
+    for fold_num,(train_index,val_index) in enumerate(kfold.split(X)):
         print(f'***********fold {fold_num+1} start!!***********')
-        x_train, x_val = train_df[fea_list].iloc[train_index], train_df[fea_list].iloc[val_index]
-        y_train, y_val = train_df[target_key][train_index], train_df[target_key][val_index]
+        x_train, x_val = X[train_index], X[val_index]
+        y_train, y_val = Y[train_index], Y[val_index]
         # print(x_val,y_val)
         model = GridSearchCV(estimator=self.clf,
                             param_grid=params,
@@ -112,13 +136,13 @@ class ML_Classifier(object):
             print('%s:'%key)
             print(best_model.get_params()[key])
 
-        '''
+        
         if self.clf_name == 'random_forest' or self.clf_name == 'extra_trees':
             if self.clf_name == 'random_forest':
                 new_grid = RandomForestRegressor(random_state=0,bootstrap=True)
             elif self.clf_name == 'extra_trees':
                 new_grid = ExtraTreesRegressor(random_state=0,bootstrap=True)
-            new_grid.set_params(**grid.best_params_)
+            new_grid.set_params(**model.best_params_)
 
             new_grid = new_grid.fit(x_train,y_train) 
             importances = new_grid.feature_importances_
@@ -129,14 +153,19 @@ class ML_Classifier(object):
             # print(indices)
             for f in range(x_train.shape[1]):
                 print("%2d) %-*s %f" % (f + 1,30, feat_labels[indices[f]], importances[indices[f]]))
-        '''
-        if pred_flag and test_df is not None:
-            pred = model.predict(test_df)
-            answers.append(pred)
-    
+        
+        if pred_flag and test is not None:
+            pred = model.predict(test)
+            predictions.append(pred)
+    predictions = sum(predictions) / k_fold
+
     pred_df = pd.read_csv(test_csv)
     pred_df['date'] = pred_df['日期']
-    pred_df[target_key] = sum(answers) / k_fold
+
+    if scaler:
+        predictions = (np.array(predictions)/scale_factor).tolist()
+        print(len(predictions))
+    pred_df[target_key] = predictions
     pred_df[['date',target_key]].to_csv(f'{save_path}/{self.clf_name}_result.csv',index=False)
     return best_model
 
@@ -155,6 +184,10 @@ class ML_Classifier(object):
     elif self.clf_name == 'lgb':
         classifier = lgb.LGBMRegressor(seed=2021)
     elif self.clf_name == 'lr':
+        classifier = LinearRegression()
+    elif self.clf_name == 'br':
+        classifier = BayesianRidge()
+    elif self.clf_name == 'poly':
         classifier = LinearRegression()
 
 

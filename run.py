@@ -12,7 +12,8 @@ import random
 
 KEY = {
     'Adver_Material':['image_id','category_id'],
-    'Crop_Growth':['image_id','category_id']
+    'Crop_Growth':['image_id','category_id'],
+    'Photo_Guide':['image','label']
 }
 
 def get_cross_validation(path_list, fold_num, current_fold):
@@ -57,9 +58,13 @@ if __name__ == "__main__":
     # Set data path & classifier
     
     pre_csv_path = CSV_PATH
+    # flip_csv_path = './converter/csv_file/photo_guide_flip.csv'
+    flip_csv_path = './converter/csv_file/photo_guide_flip_exclude.csv'
+    flip_label_dict = csv_reader_single(flip_csv_path, key_col='id', value_col='label')
     pre_label_dict = csv_reader_single(pre_csv_path, key_col='id', value_col='label')
 
     label_dict.update(pre_label_dict)
+    label_dict.update(flip_label_dict)
 
     if args.mode != 'train-cross' and args.mode != 'inf-cross':
         classifier = Pet_Classifier(**INIT_TRAINER)
@@ -69,7 +74,6 @@ if __name__ == "__main__":
     ###############################################
     if args.mode == 'train-cross':
         path_list = list(label_dict.keys())
-        # random.shuffle(path_list)
         print("dataset length is %d"%len(path_list))
 
         loss_list = []
@@ -106,7 +110,6 @@ if __name__ == "__main__":
     ###############################################
     elif args.mode == 'train':
         path_list = list(label_dict.keys())
-        random.shuffle(path_list)
         print("dataset length is %d"%len(path_list))
 
         train_path, val_path = get_cross_validation(

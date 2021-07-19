@@ -89,19 +89,26 @@ class Pet_Classifier(object):
                 self.weight_path))[0].split(':')[-1])
             print('metric threshold:%.4f'%self.metric)
         self.transform_list = [
-            DeNoise(3),
-            tr.Resize(size=self.input_shape),
-            tr.RandomAffine(0,(0.1,0.1),(0.8,1.2)),
-            tr.ColorJitter(brightness=.5, hue=.3, contrast=.5),
-            tr.RandomPerspective(distortion_scale=0.6, p=0.5),
-            RandomRotate([-15, -10, -5, 0, 5, 10, 15]),
-            tr.RandomHorizontalFlip(p=0.5),
-            tr.RandomVerticalFlip(p=0.5),
-            tr.ToTensor(),
-            tr.Normalize(self.mean, self.std),
-            SquarePad(),
-            AddNoise(),
-            tr.CenterCrop(size=self.input_shape)
+            DeNoise(3), #1
+            tr.Resize(size=self.input_shape), #2
+            tr.RandomAffine(0,(0.1,0.1),(0.8,1.2)), #3
+            tr.ColorJitter(brightness=.5, hue=.3, contrast=.5), #4
+            tr.RandomPerspective(distortion_scale=0.6, p=0.5), #5
+            # RandomRotate([-15, -10, -5, 0, 5, 10, 15]), #6
+            tr.RandomRotation((-15,+15)), #6
+            tr.RandomHorizontalFlip(p=0.5), #7
+            tr.RandomVerticalFlip(p=0.5), #8
+            tr.ToTensor(), #9
+            tr.Normalize(self.mean, self.std), #10
+            SquarePad(), #11
+            AddNoise(), #12
+            tr.CenterCrop(size=self.input_shape),#13
+            tr.RandomCrop(size=(256,256)), #14
+            tr.FiveCrop(size=self.input_shape),#15
+            tr.Lambda(lambda crops: torch.stack([torch.squeeze(tr.ToTensor()(crop)) for crop in crops])), #16
+            tr.RandomEqualize(p=0.5), #17
+            tr.GaussianBlur(3), #18
+            tr.RandomErasing(scale=(0.01, 0.05), ratio=(1.1, 1.3)) #19
         ]
 
         self.transform = [self.transform_list[i-1] for i in transform]
@@ -178,7 +185,7 @@ class Pet_Classifier(object):
         max_acc = 0.
 
 
-        early_stopping = EarlyStopping(patience=20,verbose=True,monitor='val_acc',best_score=self.metric,op_type='max')
+        early_stopping = EarlyStopping(patience=50,verbose=True,monitor='val_acc',best_score=self.metric,op_type='max')
         for epoch in range(self.start_epoch, self.n_epoch):
             train_loss, train_acc = self._train_on_epoch(epoch, net, loss, optimizer, train_loader,scaler)
 
@@ -550,6 +557,10 @@ class Pet_Classifier(object):
             from model.densenet import densenet121
             net = densenet121(input_channels=self.channels,
                               num_classes=self.num_classes,drop_rate=self.drop_rate)
+        elif net_name == 'densenet169':
+            from model.densenet import densenet169
+            net = densenet169(input_channels=self.channels,
+                              num_classes=self.num_classes,drop_rate=self.drop_rate)
         elif net_name == 'vgg16':
             from model.vgg import vgg16
             net = vgg16(input_channels=self.channels,
@@ -559,22 +570,27 @@ class Pet_Classifier(object):
             net = res2net50(input_channels=self.channels,
                         	num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'res2net18':
-                from model.res2net import res2net18
-                net = res2net18(input_channels=self.channels,
-                              num_classes=self.num_classes,final_drop=self.drop_rate)
+            from model.res2net import res2net18
+            net = res2net18(input_channels=self.channels,
+                            num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'res2next50':
-                from model.res2next import res2next50
-                net = res2next50(input_channels=self.channels,
-                              num_classes=self.num_classes,final_drop=self.drop_rate)
+            from model.res2next import res2next50
+            net = res2next50(input_channels=self.channels,
+                            num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'res2next18':
-                from model.res2next import res2next18
-                net = res2next18(input_channels=self.channels,
-                                num_classes=self.num_classes,final_drop=self.drop_rate)
+            from model.res2next import res2next18
+            net = res2next18(input_channels=self.channels,
+                            num_classes=self.num_classes,final_drop=self.drop_rate)
         elif 'efficientnet' in net_name:
-                from model.efficientnet import EfficientNet
+            from efficientnet_pytorch import EfficientNet
+            if self.external_pretrained:
+                net = EfficientNet.from_pretrained(model_name=net_name,
+                                        in_channels=self.channels,
+                                        num_classes=self.num_classes)
+            else:
                 net = EfficientNet.from_name(model_name=net_name,
-                                            in_channels=self.channels,
-                                            num_classes=self.num_classes)
+                                        in_channels=self.channels,
+                                        num_classes=self.num_classes)
         return net
 
 
@@ -628,7 +644,7 @@ class Pet_Classifier(object):
     def _get_pre_trained(self, weight_path):
         checkpoint = torch.load(weight_path)
         self.net.load_state_dict(checkpoint['state_dict'])
-        self.start_epoch = checkpoint['epoch'] + 1
+        # self.start_epoch = checkpoint['epoch'] + 1
 
 
 # computing tools
