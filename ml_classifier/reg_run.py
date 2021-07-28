@@ -12,9 +12,9 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import numpy as np
 
 # _AVAIL_CLF = ['lr','xgboost','lgb','mlp','random_forest','extra_trees','bagging']
-_AVAIL_CLF = ['random_forest','extra_trees','bagging']
+# _AVAIL_CLF = ['random_forest','extra_trees','bagging']
 # _AVAIL_CLF = ['mlp']
-# _AVAIL_CLF = ['lr']
+_AVAIL_CLF = ['lr']
 # _AVAIL_CLF = ['poly']
 # _AVAIL_CLF = ['mlp']
 
@@ -67,42 +67,15 @@ def scaler_normalize(train_df,test_df,scale_list=None,label=None):
     return train_df,test_df
 
 
-def cal_reciprocal(df,scale_list=None):
-
-    for col in scale_list:
-        df[f're_{col}'] = df[col].apply(lambda x:1/x)
-    
-    return df
-
-
-def scaler_normalize_single(df,scale_list=None):
-
-    df = df.fillna(0)
-    df = date_encoder(df)
-    df = onehot_encoder(df)
-
-
-    if scale_list is not None:
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        
-        for col in scale_list:
-            df[col] = scaler.fit_transform(df[col].values.reshape(-1, 1))
-
-    return df
-
-
-def cal_mean(df,factor_dict):
+def new_normalize(df,factor_dict):
     for col,factor in factor_dict.items():
         df[col] = df[col].apply(lambda x : x / factor)
     return df
 
 factor_dict = {
-    "PM2.5":75, 
-    "PM10":150, 
-    "SO2":150, 
-    "CO":4, 
-    "NO2":80, 
-    "O3_8h":160
+    'AQI':500,
+    "PM2.5":500, 
+    "PM10":600
 }
 
 
@@ -126,39 +99,32 @@ SETUP_TRAINER = {
 
 if __name__ == "__main__":
 
-    # train_path = './dataset/air/pre_train/保定2016年.csv'
-    # train_df = pd.read_csv(train_path)
-
-    # test_path = './dataset/air/pre_test/石家庄20160701-20170701.csv'
-    # test_df = pd.read_csv(test_path)
-
-    train_path = './dataset/air/pre_train/保定2016年_IAQI.csv'
+    train_path = './dataset/air/pre_train/保定2016年.csv'
     train_df = pd.read_csv(train_path)
 
-    test_path = './dataset/air/pre_test/石家庄20160701-20170701_IAQI.csv'
+    test_path = './dataset/air/pre_test/石家庄20160701-20170701.csv'
     test_df = pd.read_csv(test_path)
+
+    # train_path = './dataset/air/pre_train/保定2016年_IAQI.csv'
+    # train_df = pd.read_csv(train_path)
+
+    # test_path = './dataset/air/pre_test/石家庄20160701-20170701_IAQI.csv'
+    # test_df = pd.read_csv(test_path)
 
     
     raw_list = ["AQI","PM2.5", "PM10"]
-    iaqi_list = ["PM2.5_IAQI", "PM10_IAQI","CO_IAQI"]
-    re_list = ["re_AQI","re_CO","re_NO2","re_CO_IAQI", "re_NO2_IAQI"]
+    iaqi_list = ["PM2.5_IAQI", "PM10_IAQI"]
     extra_list = ['month','day'] 
     serious_list =['重度污染', '良', '中度污染', '轻度污染', '严重污染']
     
-    # train_df = cal_mean(train_df,factor_dict)
-    # test_df = cal_mean(test_df,factor_dict)
-
-    train_df = cal_reciprocal(train_df,["AQI", "CO", "NO2","CO_IAQI", "NO2_IAQI"])
-    test_df = cal_reciprocal(test_df,["AQI","CO", "NO2","CO_IAQI", "NO2_IAQI"])
+    # scale_list = raw_list + iaqi_list
+    # # scale_list = None
+    # train_df,test_df = scaler_normalize(train_df,test_df,scale_list,'IPRC')
     
-    scale_list = raw_list + re_list + iaqi_list
-    # scale_list = None
-    train_df,test_df = scaler_normalize(train_df,test_df,scale_list,'IPRC')
-    
-    # train_df = scaler_normalize_single(train_df,scale_list)
-    # test_df = scaler_normalize_single(test_df,scale_list)
+    train_df = new_normalize(train_df,factor_dict)
+    test_df = new_normalize(test_df,factor_dict)
 
-    fea_list = [f for f in train_df.columns if f not in ['IPRC'] + serious_list + extra_list + ["SO2_IAQI", "NO2_IAQI", "O3_8h_IAQI"] + ["SO2", "CO", "NO2", "O3_8h"]] 
+    fea_list = [f for f in train_df.columns if f not in ['IPRC','日期','质量等级'] + ["SO2", "CO", "NO2", "O3_8h"]] 
     test_df = test_df[fea_list]
     train_df = train_df[fea_list + ['IPRC']]
 

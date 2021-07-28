@@ -3,7 +3,7 @@ import argparse
 from trainer import Pet_Classifier
 import pandas as pd
 from data_utils.csv_reader import csv_reader_single
-from config import INIT_TRAINER, SETUP_TRAINER,TASK
+from config import INIT_TRAINER, SETUP_TRAINER,TASK,NUM_CLASSES
 from config import VERSION, CURRENT_FOLD, FOLD_NUM, WEIGHT_PATH_LIST, TTA_TIMES, CSV_PATH
 
 import time
@@ -59,13 +59,14 @@ if __name__ == "__main__":
     
     pre_csv_path = CSV_PATH
     # flip_csv_path = './converter/csv_file/photo_guide_flip.csv'
-    flip_csv_path = './converter/csv_file/photo_guide_flip_exclude.csv'
-    flip_label_dict = csv_reader_single(flip_csv_path, key_col='id', value_col='label')
+    # vertical_flip_csv_path = './converter/csv_file/photo_guide_flip_vertical.csv'
+    # flip_label_dict = csv_reader_single(flip_csv_path, key_col='id', value_col='label')
+    # vertical_flip_label_dict = csv_reader_single(vertical_flip_csv_path, key_col='id', value_col='label')
     pre_label_dict = csv_reader_single(pre_csv_path, key_col='id', value_col='label')
 
     label_dict.update(pre_label_dict)
-    label_dict.update(flip_label_dict)
-
+    # label_dict.update(flip_label_dict)
+    # label_dict.update(vertical_flip_label_dict)
     if args.mode != 'train-cross' and args.mode != 'inf-cross':
         classifier = Pet_Classifier(**INIT_TRAINER)
         print(get_parameter_number(classifier.net))
@@ -145,7 +146,9 @@ if __name__ == "__main__":
 
             info = {}
             info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
-            info[KEY[TASK][1]] = [int(case) for case in result['pred']]
+            info[KEY[TASK][1]] = [int(case) + 1 for case in result['pred']]
+            for i in range(NUM_CLASSES):
+                info[f'prob_{str(i+1)}'] = np.array(result['prob'])[:,i].tolist()
             # info['prob'] = result['prob']
             csv_file = pd.DataFrame(info)
             csv_file.to_csv(save_path, index=False)
@@ -193,14 +196,18 @@ if __name__ == "__main__":
 
             info = {}
             info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
-            info[KEY[TASK][1]] = [int(case) for case in result['pred']]
+            info[KEY[TASK][1]] = [int(case) + 1 for case in result['pred']]
+            for i in range(NUM_CLASSES):
+                info[f'prob_{str(i+1)}'] = np.array(result['prob'])[:,i].tolist()
             # info['prob'] = result['prob']
             csv_file = pd.DataFrame(info)
             csv_file.to_csv(save_path, index=False)
 
             info = {}
             info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
-            info[KEY[TASK][1]] = [int(case) for case in result['vote_pred']]
+            info[KEY[TASK][1]] = [int(case) + 1 for case in result['vote_pred']]
+            for i in range(NUM_CLASSES):
+                info[f'prob_{str(i+1)}'] = np.array(result['prob'])[:,i].tolist()
             # info['prob'] = result['prob']
             csv_file = pd.DataFrame(info)
             csv_file.to_csv(save_path_vote, index=False)

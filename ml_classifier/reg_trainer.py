@@ -124,7 +124,6 @@ class ML_Classifier(object):
         best_model = model.best_estimator_
         train_pred = model.predict(x_train)
         train_score = rmse(y_train,train_pred)
-        # test_score = best_model.score(x_val,y_val)
         test_pred = model.predict(x_val)
         test_score = rmse(y_val,test_pred)
         print("MSE Evaluation:")

@@ -8,6 +8,8 @@ def make_label_csv(input_path,csv_path,target_list=None):
 
     info = []
     for subdir in os.scandir(input_path):
+        # if subdir.name == '1':
+        #     continue
         index = subdir.name
         path_list = glob.glob(os.path.join(subdir.path,"*.*g"))
         sub_info = [[item,eval(index)-1] for item in path_list]
@@ -38,8 +40,8 @@ if __name__ == "__main__":
     # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Crop_Growth/train'
     # csv_path = './csv_file/crop_growth.csv'
 
-    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Photo_Guide/flip_train'
-    # csv_path = './csv_file/photo_guide_flip_exclude.csv'
-    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Leve_Disease/train'
-    csv_path = './csv_file/leve_disease.csv'
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Photo_Guide/h_after_v_flip_train'
+    csv_path = './csv_file/photo_guide_flip_vertical_horizontal.csv'
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Leve_Disease/train'
+    # csv_path = './csv_file/leve_disease.csv'
     make_label_csv(input_path,csv_path)

@@ -9,7 +9,7 @@ def vote_ensemble(csv_path_list, save_path, col='label'):
         csv_file = pd.read_csv(csv_path)
         ensemble_list.append(csv_file[col].values.tolist())
 
-    result['uuid'] = csv_file['uuid'].values.tolist()
+    result['image'] = csv_file['image'].values.tolist()
     vote_array = np.array(ensemble_list)
     result['label'] = [
         max(list(vote_array[:, i]), key=list(vote_array[:, i]).count)
@@ -22,17 +22,8 @@ def vote_ensemble(csv_path_list, save_path, col='label'):
 
 if __name__ == "__main__":
 
-    save_path = './save_path.csv'
-
-    csv_path_list = ['your_path.csv', '...']
-    reorder = {'index_list': [], 'diff': []}
-    from itertools import combinations
-    for r in range(2, len(csv_path_list)):
-        for index in combinations(range(len(csv_path_list)), r):
-            print(index)
-            reorder['index_list'].append(index)
-            tmp_csv_path_list = [csv_path_list[i] for i in index]
-            vote_ensemble(tmp_csv_path_list, save_path)
-            from post_process import diff_csv
-            diff = diff_csv(save_path, './compare_path.csv', 'label') # It is an option to choose the csv that you have submitted
-            reorder['diff'].append(diff)
+    save_path = './fusion.csv'
+    csv_path_list = ['./result/Photo_Guide/v5.2-alldata/submission_ave.csv', \
+                     './result/Photo_Guide/v5.2-merge/submission_ave.csv', \
+                     './result/Photo_Guide/v5.0/submission_ave.csv']
+    vote_ensemble(csv_path_list, save_path)

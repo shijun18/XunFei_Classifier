@@ -12,7 +12,8 @@ import math
 from torch.nn import functional as F
 
 import torchvision.transforms as tr
-from data_utils.data_loader import DataGenerator
+from data_utils.data_loader import DataGenerator as DataGenerator
+# from data_utils.data_loader import SplitDataGenerator as DataGenerator
 
 import torch.distributed as dist
 from PIL import Image
@@ -96,16 +97,16 @@ class Pet_Classifier(object):
             tr.RandomPerspective(distortion_scale=0.6, p=0.5), #5
             # RandomRotate([-15, -10, -5, 0, 5, 10, 15]), #6
             tr.RandomRotation((-15,+15)), #6
-            tr.RandomHorizontalFlip(p=0.5), #7
-            tr.RandomVerticalFlip(p=0.5), #8
+            tr.RandomHorizontalFlip(p=1), #7
+            tr.RandomVerticalFlip(p=1), #8
             tr.ToTensor(), #9
             tr.Normalize(self.mean, self.std), #10
             SquarePad(), #11
             AddNoise(), #12
             tr.CenterCrop(size=self.input_shape),#13
             tr.RandomCrop(size=(256,256)), #14
-            tr.FiveCrop(size=self.input_shape),#15
-            tr.Lambda(lambda crops: torch.stack([torch.squeeze(tr.ToTensor()(crop)) for crop in crops])), #16
+            tr.FiveCrop(size=(self.input_shape[0]//2,self.input_shape[1]//2)),#15
+            tr.Lambda(lambda crops: torch.stack([torch.squeeze(crop) for crop in crops])), #16
             tr.RandomEqualize(p=0.5), #17
             tr.GaussianBlur(3), #18
             tr.RandomErasing(scale=(0.01, 0.05), ratio=(1.1, 1.3)) #19
@@ -582,15 +583,11 @@ class Pet_Classifier(object):
             net = res2next18(input_channels=self.channels,
                             num_classes=self.num_classes,final_drop=self.drop_rate)
         elif 'efficientnet' in net_name:
-            from efficientnet_pytorch import EfficientNet
-            if self.external_pretrained:
-                net = EfficientNet.from_pretrained(model_name=net_name,
-                                        in_channels=self.channels,
-                                        num_classes=self.num_classes)
-            else:
-                net = EfficientNet.from_name(model_name=net_name,
-                                        in_channels=self.channels,
-                                        num_classes=self.num_classes)
+            import timm
+            net = timm.create_model(net_name, pretrained=self.external_pretrained, in_chans=self.channels,num_classes=self.num_classes)
+        elif 'directnet' in net_name:
+            import model.directnet as directnet
+            net = directnet.__dict__[net_name](in_channels=self.channels,num_classes=self.num_classes)
         return net
 
 
@@ -613,6 +610,14 @@ class Pet_Classifier(object):
             from losses.crossentropy import SoftCrossEntropy
             loss = SoftCrossEntropy(classes=self.num_classes,smoothing=0.1,weight=class_weight,reduction='topk',k=0.8)
 
+        elif loss_fun == 'DynamicTopkCrossEntropy':
+            from losses.crossentropy import DynamicTopkSoftCrossEntropy
+            loss = DynamicTopkSoftCrossEntropy(classes=self.num_classes,smoothing=0.0,weight=class_weight)
+
+        elif loss_fun == 'DynamicTopkSoftCrossEntropy':
+            from losses.crossentropy import DynamicTopkSoftCrossEntropy
+            loss = DynamicTopkSoftCrossEntropy(classes=self.num_classes,smoothing=0.1,weight=class_weight)
+        
         return loss
 
     def _get_optimizer(self, optimizer, net, lr, weight_decay, momentum):
