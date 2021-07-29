@@ -25,7 +25,7 @@ from data_utils.transforms import RandomRotate,DeNoise,SquarePad,AddNoise
 # GPU version.
 
 
-class Pet_Classifier(object):
+class My_Classifier(object):
     '''
     Control the training, evaluation, test and inference process.
     Args:
@@ -47,7 +47,7 @@ class Pet_Classifier(object):
                  batch_size=6, num_workers=0, device=None, pre_trained=False, weight_path=None, weight_decay=0.,
                  momentum=0.95, mean=(0.105393,), std=(0.203002,), milestones=None,use_fp16=False,transform=None,
                  drop_rate=0.0,external_pretrained=False):
-        super(Pet_Classifier, self).__init__()
+        super(My_Classifier, self).__init__()
 
         self.net_name = net_name
         self.lr = lr
@@ -366,17 +366,7 @@ class Pet_Classifier(object):
         net = net.cuda()
         net.eval()
 
-        test_transformer = transforms.Compose([
-            tr.Resize(size=self.input_shape),
-            tr.RandomAffine(0,(0.1,0.1),(0.8,1.2)),
-            tr.ColorJitter(brightness=.5, hue=.3),
-            tr.RandomPerspective(distortion_scale=0.6, p=0.5),
-            RandomRotate([-45, -30, -15, 0, 15, 30, 45]),
-            tr.RandomHorizontalFlip(p=0.5),
-            tr.RandomVerticalFlip(p=0.5),
-            tr.ToTensor()
-            # tr.Normalize(self.mean, self.std)
-        ])
+        test_transformer = transforms.Compose(self.transform)
 
         test_dataset = DataGenerator(
             test_path, label_dict, channels=self.channels, transform=test_transformer)
@@ -588,6 +578,11 @@ class Pet_Classifier(object):
         elif 'directnet' in net_name:
             import model.directnet as directnet
             net = directnet.__dict__[net_name](in_channels=self.channels,num_classes=self.num_classes)
+        
+        elif 'bilinearnet' in net_name:
+            import model.bilinearnet as bilinearnet
+            net = bilinearnet.__dict__[net_name](in_channels=self.channels,num_classes=self.num_classes)
+
         return net
 
 

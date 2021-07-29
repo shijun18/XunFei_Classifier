@@ -1,6 +1,6 @@
 import os
 import argparse
-from trainer import Pet_Classifier
+from trainer import My_Classifier
 import pandas as pd
 from data_utils.csv_reader import csv_reader_single
 from config import INIT_TRAINER, SETUP_TRAINER,TASK,NUM_CLASSES
@@ -13,7 +13,8 @@ import random
 KEY = {
     'Adver_Material':['image_id','category_id'],
     'Crop_Growth':['image_id','category_id'],
-    'Photo_Guide':['image','label']
+    'Photo_Guide':['image','label'],
+    'Leve_Disease':['image_id','category_id']
 }
 
 def get_cross_validation(path_list, fold_num, current_fold):
@@ -68,7 +69,7 @@ if __name__ == "__main__":
     # label_dict.update(flip_label_dict)
     # label_dict.update(vertical_flip_label_dict)
     if args.mode != 'train-cross' and args.mode != 'inf-cross':
-        classifier = Pet_Classifier(**INIT_TRAINER)
+        classifier = My_Classifier(**INIT_TRAINER)
         print(get_parameter_number(classifier.net))
 
     # Training with cross validation
@@ -82,7 +83,7 @@ if __name__ == "__main__":
 
         for current_fold in range(1, FOLD_NUM+1):
             print("=== Training Fold ", current_fold, " ===")
-            classifier = Pet_Classifier(**INIT_TRAINER)
+            classifier = My_Classifier(**INIT_TRAINER)
 
             if current_fold == 0:
                 print(get_parameter_number(classifier.net))
@@ -134,7 +135,8 @@ if __name__ == "__main__":
             os.makedirs(save_dir)
         if args.mode == 'inf':
             test_id = os.listdir(args.path)
-            test_id.sort(key=lambda x:eval(x.split('.')[0].split('_')[-1]))
+            # test_id.sort(key=lambda x:eval(x.split('.')[0].split('_')[-1]))
+            test_id.sort(key=lambda x:x.split('.')[0])
             test_path = [os.path.join(args.path, case)
                         for case in test_id]
             save_path = os.path.join(save_dir,f'submission_fold{CURRENT_FOLD}.csv')
@@ -149,6 +151,7 @@ if __name__ == "__main__":
             info[KEY[TASK][1]] = [int(case) + 1 for case in result['pred']]
             for i in range(NUM_CLASSES):
                 info[f'prob_{str(i+1)}'] = np.array(result['prob'])[:,i].tolist()
+
             # info['prob'] = result['prob']
             csv_file = pd.DataFrame(info)
             csv_file.to_csv(save_path, index=False)
@@ -178,7 +181,7 @@ if __name__ == "__main__":
                 print("Inference %d fold..." % (i+1))
                 print("weight: %s"%weight_path)
                 INIT_TRAINER['weight_path'] = weight_path
-                classifier = Pet_Classifier(**INIT_TRAINER)
+                classifier = My_Classifier(**INIT_TRAINER)
 
                 prob_output, vote_output = classifier.inference_tta(
                     test_path, TTA_TIMES)

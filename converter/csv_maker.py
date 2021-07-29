@@ -40,8 +40,8 @@ if __name__ == "__main__":
     # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Crop_Growth/train'
     # csv_path = './csv_file/crop_growth.csv'
 
-    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Photo_Guide/h_after_v_flip_train'
-    csv_path = './csv_file/photo_guide_flip_vertical_horizontal.csv'
-    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Leve_Disease/train'
-    # csv_path = './csv_file/leve_disease.csv'
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Photo_Guide/h_after_v_flip_train'
+    # csv_path = './csv_file/photo_guide_flip_vertical_horizontal.csv'
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Leve_Disease/tmp'
+    csv_path = './csv_file/tmp_leve_disease.csv'
     make_label_csv(input_path,csv_path)
