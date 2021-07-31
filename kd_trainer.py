@@ -43,13 +43,14 @@ class My_Classifier(object):
     - weight_path: weight path of pre-trained model
     '''
 
-    def __init__(self, net_name=None, gamma=0.1, lr=1e-3, n_epoch=1, channels=1, num_classes=3, input_shape=None, crop=48,
-                 batch_size=6, num_workers=0, device=None, pre_trained=False, weight_path=None, weight_decay=0.,
+    def __init__(self, net_name=None,teacher_net_name=None,gamma=0.1, lr=1e-3, n_epoch=1, channels=1, num_classes=3, input_shape=None, crop=48,
+                 batch_size=6, num_workers=0, device=None, pre_trained=False, weight_path=None, teacher_weight_path=None, weight_decay=0.,
                  momentum=0.95, mean=(0.105393,), std=(0.203002,), milestones=None,use_fp16=False,transform=None,
-                 drop_rate=0.0,external_pretrained=False):
+                 drop_rate=0.0,external_pretrained=False,alpha=0.95,temperature=6):
         super(My_Classifier, self).__init__()
 
         self.net_name = net_name
+        self.teacher_net_name = teacher_net_name
         self.lr = lr
         self.n_epoch = n_epoch
         self.channels = channels
@@ -62,6 +63,7 @@ class My_Classifier(object):
 
         self.pre_trained = pre_trained
         self.weight_path = weight_path
+        self.teacher_weight_path = teacher_weight_path
         self.start_epoch = 0
         self.global_step = 0
         self.loss_threshold = 1.0
@@ -78,9 +80,17 @@ class My_Classifier(object):
         self.use_fp16 = use_fp16
         self.drop_rate = drop_rate
         self.external_pretrained = external_pretrained
+        self.alpha = alpha
+        self.temperature = temperature
 
         os.environ['CUDA_VISIBLE_DEVICES'] = self.device
         self.net = self._get_net(self.net_name)
+        self.teacher_net = self._get_net(self.teacher_net_name)
+
+        # load teacher model
+        checkpoint = torch.load(self.teacher_weight_path)
+        self.teacher_net.load_state_dict(checkpoint['state_dict'])
+
         if self.pre_trained:
             self._get_pre_trained(self.weight_path)
             self.loss_threshold = eval(os.path.splitext(os.path.basename(
@@ -144,6 +154,7 @@ class My_Classifier(object):
             math.ceil(len(train_path)/self.batch_size)
 
         net = self.net
+        teacher_net = self.teacher_net
         lr = self.lr
         loss = self._get_loss(loss_fun, class_weight)
         weight_decay = self.weight_decay
@@ -188,19 +199,19 @@ class My_Classifier(object):
 
         early_stopping = EarlyStopping(patience=50,verbose=True,monitor='val_acc',best_score=self.metric,op_type='max')
         for epoch in range(self.start_epoch, self.n_epoch):
-            train_loss, train_acc = self._train_on_epoch(epoch, net, loss, optimizer, train_loader,scaler)
+            train_loss, train_acc = self._train_on_epoch(epoch, net,teacher_net, loss, optimizer, train_loader,scaler)
 
-            val_loss, val_acc = self._val_on_epoch(epoch, net, loss, val_path, label_dict)
+            val_loss, val_acc = self._val_on_epoch(epoch, net, val_path, label_dict)
 
             torch.cuda.empty_cache()
 
             if lr_scheduler is not None:
                 lr_scheduler.step()
 
-            print('Train epoch:{},train_loss:{:.5f},train_acc:{:.5f}'
+            print('Train epoch:{},train_kl_loss:{:.5f},train_acc:{:.5f}'
                   .format(epoch, train_loss, train_acc))
 
-            print('Val epoch:{},val_loss:{:.5f},val_acc:{:.5f}'
+            print('Val epoch:{},val_ce_loss:{:.5f},val_acc:{:.5f}'
                   .format(epoch, val_loss, val_acc))
 
             self.writer.add_scalars(
@@ -234,7 +245,7 @@ class My_Classifier(object):
                     'optimizer': optimizer.state_dict()
                 }
 
-                file_name = 'epoch:{}-train_loss:{:.5f}-val_loss:{:.5f}-train_acc:{:.5f}-val_acc:{:.5f}.pth'.format(
+                file_name = 'epoch:{}-train_kl_loss:{:.5f}-val_ce_loss:{:.5f}-train_acc:{:.5f}-val_acc:{:.5f}.pth'.format(
                     epoch, train_loss, val_loss, train_acc, val_acc)
                 print('Save as --- ' + file_name)
                 save_path = os.path.join(output_dir, file_name)
@@ -250,9 +261,10 @@ class My_Classifier(object):
         dfs_remove_weight(output_dir,retain=3)
         return min_loss, max_acc
 
-    def _train_on_epoch(self, epoch, net, criterion, optimizer, train_loader,scaler):
+    def _train_on_epoch(self, epoch, net, teacher_net, criterion, optimizer, train_loader,scaler):
 
         net.train()
+        teacher_net.eval()
 
         train_loss = AverageMeter()
         train_acc = AverageMeter()
@@ -267,7 +279,9 @@ class My_Classifier(object):
             target = target.cuda()
             with autocast(self.use_fp16):
                 output = net(data)
-                loss = criterion(output, target)
+                with torch.no_grad():
+                    teacher_output = teacher_net(data)
+                loss = criterion(output, target, teacher_output)
             
             optimizer.zero_grad()
             if self.use_fp16:
@@ -301,7 +315,7 @@ class My_Classifier(object):
 
         return train_loss.avg, train_acc.avg
 
-    def _val_on_epoch(self, epoch, net, criterion, val_path, label_dict):
+    def _val_on_epoch(self, epoch, net, val_path, label_dict):
 
         net.eval()
 
@@ -330,7 +344,8 @@ class My_Classifier(object):
                 target = target.cuda()
                 with autocast(self.use_fp16):
                     output = net(data)
-                    loss = criterion(output, target)
+                    # cross entropy
+                    loss = F.cross_entropy(output, target)
 
                 output = output.float()
                 loss = loss.float()
@@ -342,7 +357,7 @@ class My_Classifier(object):
 
                 torch.cuda.empty_cache()
 
-                print('epoch:{},step:{},val_loss:{:.5f},val_acc:{:.5f}'
+                print('epoch:{},step:{},val_ce_loss:{:.5f},val_acc:{:.5f}'
                       .format(epoch, step, loss.item(), acc.item()))
 
         return val_loss.avg, val_acc.avg
@@ -629,6 +644,10 @@ class My_Classifier(object):
             from losses.crossentropy import DynamicTopkSoftCrossEntropy
             loss = DynamicTopkSoftCrossEntropy(classes=self.num_classes,smoothing=0.1,weight=class_weight)
         
+        elif loss_fun == 'KD_Loss':
+            from losses.kd_loss import KD_Loss
+            loss = KD_Loss(alpha=self.alpha,temperature=self.temperature)
+
         return loss
 
     def _get_optimizer(self, optimizer, net, lr, weight_decay, momentum):
@@ -661,7 +680,6 @@ class My_Classifier(object):
         checkpoint = torch.load(weight_path)
         self.net.load_state_dict(checkpoint['state_dict'])
         # self.start_epoch = checkpoint['epoch'] + 1
-
 
 # computing tools
 

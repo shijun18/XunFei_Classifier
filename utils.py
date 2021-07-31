@@ -20,6 +20,7 @@ def get_weight_list(ckpt_path,choice=None):
             continue
         if fold.is_dir():
             weight_path = os.listdir(fold.path)
+            # print(weight_path)
             weight_path.sort(key=lambda x:int(x.split('-')[0].split(':')[-1]))
             path_list.append(os.path.join(fold.path,weight_path[-1]))
             # print(os.path.join(fold.path,weight_path[-1]))
@@ -51,15 +52,15 @@ def remove_weight_path(ckpt_path,retain=3):
                 os.remove(os.path.join(ckpt_path,pth_item))
 
 
-def dfs_remove_weight(ckpt_path):
+def dfs_remove_weight(ckpt_path,retain=3):
     for sub_path in os.scandir(ckpt_path):
         if sub_path.is_dir():
-            dfs_remove_weight(sub_path.path)
+            dfs_remove_weight(sub_path.path,retain=retain)
         else:
-            remove_weight_path(ckpt_path)
+            remove_weight_path(ckpt_path,retain=retain)
             break  
 
 if __name__ == "__main__":
 
-    ckpt_path = './ckpt'
+    ckpt_path = './ckpt/Leve_Disease'
     dfs_remove_weight(ckpt_path)
