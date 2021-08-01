@@ -1,10 +1,10 @@
 import os
 import argparse
-from trainer import My_Classifier
+from kd_trainer import My_Classifier
 import pandas as pd
 from data_utils.csv_reader import csv_reader_single
-from config import INIT_TRAINER, SETUP_TRAINER,TASK,NUM_CLASSES
-from config import VERSION, CURRENT_FOLD, FOLD_NUM, WEIGHT_PATH_LIST, TTA_TIMES, CSV_PATH
+from kd_config import INIT_TRAINER, SETUP_TRAINER,TASK,NUM_CLASSES
+from kd_config import VERSION, CURRENT_FOLD, FOLD_NUM, WEIGHT_PATH_LIST, TTA_TIMES, CSV_PATH
 
 import time
 import numpy as np

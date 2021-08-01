@@ -179,6 +179,7 @@ class My_Classifier(object):
 
         # copy to gpu
         net = net.cuda()
+        teacher_net = teacher_net.cuda()
         loss = loss.cuda()
 
         # optimizer setting

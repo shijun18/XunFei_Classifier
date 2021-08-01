@@ -62,5 +62,5 @@ def dfs_remove_weight(ckpt_path,retain=3):
 
 if __name__ == "__main__":
 
-    ckpt_path = './ckpt/Leve_Disease'
+    ckpt_path = './ckpt/Temp_Freq'
     dfs_remove_weight(ckpt_path)

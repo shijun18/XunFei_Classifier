@@ -21,15 +21,15 @@ num_classes = {
 }
 
 TASK = 'Temp_Freq'
-NET_NAME = 'efficientnet-b5'
-VERSION = 'v6.0-pretrained'
+NET_NAME = 'resnet18'
+VERSION = 'v1.0-pretrained'
 
 TEA_NET_NAME = 'efficientnet-b5'
 TEACHER_VERSION = 'v6.0-pretrained'
 
-DEVICE = '7'
+DEVICE = '0'
 # Must be True when pre-training and inference
-PRE_TRAINED = True 
+PRE_TRAINED = False 
 # 1,2,3,4
 CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))

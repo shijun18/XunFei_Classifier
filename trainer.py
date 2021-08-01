@@ -541,10 +541,6 @@ class My_Classifier(object):
             from model.simple_net import simple_net
             net = simple_net(input_channels=self.channels,
                              num_classes=self.num_classes,final_drop=self.drop_rate)
-        elif net_name == 'tiny_net':
-            from model.simple_net import tiny_net
-            net = tiny_net(input_channels=self.channels,
-                           num_classes=self.num_classes,final_drop=self.drop_rate)
         elif net_name == 'densenet121':
             from model.densenet import densenet121
             net = densenet121(input_channels=self.channels,

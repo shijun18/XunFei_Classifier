@@ -90,7 +90,7 @@ if __name__ == "__main__":
         loss_list = []
         acc_list = []
 
-        for current_fold in range(2, FOLD_NUM+1):
+        for current_fold in range(1, FOLD_NUM+1):
             print("=== Training Fold ", current_fold, " ===")
             classifier = My_Classifier(**INIT_TRAINER)
 
@@ -171,7 +171,8 @@ if __name__ == "__main__":
         ###############################################
         elif args.mode == 'inf-cross':
             test_id = os.listdir(args.path)
-            test_id.sort(key=lambda x:eval(x.split('.')[0].split('_')[-1]))
+            # test_id.sort(key=lambda x:eval(x.split('.')[0].split('_')[-1]))
+            test_id.sort(key=lambda x:x.split('.')[0])
             test_path = [os.path.join(args.path, case)
                         for case in test_id]
             save_path_vote = os.path.join(save_dir,'submission_vote.csv')
