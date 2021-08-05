@@ -12,7 +12,7 @@ def make_label_csv(input_path,csv_path,target_list=None):
         #     continue
         index = subdir.name
         path_list = glob.glob(os.path.join(subdir.path,"*.*g"))
-        sub_info = [[item,eval(index)-1] for item in path_list]
+        sub_info = [[item,eval(index)] for item in path_list]
         if target_list is not None:
             if eval(index) in target_list:
                 info.extend(sub_info)
@@ -31,6 +31,13 @@ def make_label_csv(input_path,csv_path,target_list=None):
 
 
 
+def make_csv(input_path,csv_path):
+    id_list = glob.glob(os.path.join(input_path,'*.*g'))
+    print(len(id_list))
+    info = {'id':[]}
+    info['id'] = id_list
+    df = pd.DataFrame(data=info)
+    df.to_csv(csv_path,index=False)
 
 
 if __name__ == "__main__":
@@ -42,6 +49,15 @@ if __name__ == "__main__":
 
     # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Photo_Guide/h_after_v_flip_train'
     # csv_path = './csv_file/photo_guide_flip_vertical_horizontal.csv'
-    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Leve_Disease/tmp'
-    csv_path = './csv_file/tmp_leve_disease.csv'
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Temp_Freq/train'
+    # csv_path = './csv_file/temp_freq.csv'
+    # make_label_csv(input_path,csv_path)
+
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Temp_Freq/test'
+    # csv_path = './csv_file/test_temp_freq.csv'
+    # make_csv(input_path,csv_path)
+
+    
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Farmer_Work/train-external'
+    csv_path = './csv_file/farmer_work_external.csv'
     make_label_csv(input_path,csv_path)

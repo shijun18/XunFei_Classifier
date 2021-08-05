@@ -5,12 +5,13 @@ import model.resnet as resnet
 
 class BilinearNet(nn.Module):
     
-    def __init__(self,encode_net,encode_dim=128,in_channels=1,num_classes=8,final_drop=0.5):
+    def __init__(self,encode_net,encode_dim=128,in_channels=1,num_classes=8,final_drop=0.5,pretrained=True):
         super(BilinearNet,self).__init__()
         self.encode_dim = encode_dim
         self.num_classes = num_classes
         self.in_channels = in_channels
         self.encode_net = self.get_encoder(encode_net)
+        self.pretrained = pretrained
 
         self.features =[nn.Sequential(self.encode_net.conv1, self.encode_net.bn1, self.encode_net.relu),
                         nn.Sequential(self.encode_net.maxpool, self.encode_net.layer1),
@@ -43,11 +44,9 @@ class BilinearNet(nn.Module):
 
     def get_encoder(self,net_name):
         if net_name.startswith('resnest'):
-            net = resnest.__dict__[net_name](input_channels=self.in_channels,num_classes=self.encode_dim)
-        if net_name.startswith('resnet'):
+            net = resnest.__dict__[net_name](pretrained=self.pretrained,input_channels=self.in_channels,num_classes=self.encode_dim)
+        elif net_name.startswith('resnet'):
             net = resnet.__dict__[net_name](input_channels=self.in_channels,num_classes=self.encode_dim)
-        else:
-            raise ValueError('the {} is unavailable!!'%net_name)
         return net
 
 
@@ -58,19 +57,8 @@ def bilinearneSt18(**kwargs):
     return net
 
 
-def bilinearneSt50(**kwargs):
-    net = BilinearNet('resnest50',**kwargs)
-
-    return net
-
 
 def bilinearnet18(**kwargs):
     net = BilinearNet('resnet18',**kwargs)
-
-    return net
-
-
-def bilinearnet50(**kwargs):
-    net = BilinearNet('resnet50',**kwargs)
 
     return net
