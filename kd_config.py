@@ -22,7 +22,7 @@ num_classes = {
 
 TASK = 'Temp_Freq'
 NET_NAME = 'resnet18'
-VERSION = 'v1.0-pretrained'
+VERSION = 'v1.0'
 
 TEA_NET_NAME = 'efficientnet-b5'
 TEACHER_VERSION = 'v6.0-pretrained'
@@ -46,10 +46,11 @@ TEACHER_CKPT_PATH = './ckpt/{}/{}/fold{}'.format(TASK,TEACHER_VERSION,str(CURREN
 
 WEIGHT_PATH = get_weight_path(CKPT_PATH)
 TEACHER_WEIGHT_PATH  = get_weight_path(TEACHER_CKPT_PATH)
+TEACHER_WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,TEACHER_VERSION))
 print(WEIGHT_PATH)
 
 if PRE_TRAINED:
-    WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION))
+    WEIGHT_PATH_LIST = get_weight_list('./kd_ckpt/{}/{}/'.format(TASK,VERSION))
 else:
     WEIGHT_PATH_LIST = None
 
@@ -93,7 +94,7 @@ TRANSFORM = {
     'Crop_Growth':[6,7,8,13,9],
     'Photo_Guide':[18,2,6,9,19],#[18,2,6,9,19]
     'Leve_Disease':[2,6,7,8,9,10,19],
-    'Temp_Freq':[2,3,4,9,19] #[2,3,4,9,19]
+    'Temp_Freq':[2,4,9,19] #[2,3,4,9,19]
 }
 
 SHAPE = {

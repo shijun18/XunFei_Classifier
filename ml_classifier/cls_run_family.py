@@ -23,7 +23,9 @@ SETUP_TRAINER = {
   'target_key':'tag',
   'random_state':21,
   'metric':METRICS_CLS,
-  'k_fold':5
+  'k_fold':5,
+  'sub_col':['_id','tag'],
+  'id_name':['_id']
 }
 
 

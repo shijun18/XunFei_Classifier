@@ -85,8 +85,8 @@ if __name__ == '__main__':
     # cal_mean_std(input_path)
 
 
-    input_csv = './csv_file/leve_disease.csv'
+    input_csv = './csv_file/farmer_work.csv'
     path_list = pd.read_csv(input_csv)['id'].values.tolist()
-    test_path = '../dataset/Leve_Disease/test/'
+    test_path = '../dataset/Farmer_Work/test/'
     path_list += [os.path.join(test_path,case) for case in os.listdir(test_path)]
     cal_mean_std(path_list)

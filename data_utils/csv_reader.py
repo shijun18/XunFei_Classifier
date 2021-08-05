@@ -1,7 +1,6 @@
 import random
 import pandas as pd
 
-
 def csv_reader_single(csv_file,key_col=None,value_col=None):
     '''
     Extracts the specified single column, return a single level dict.
@@ -38,14 +37,14 @@ def csv_merge(csv_list,save_path,key_col=None,value_col=None):
     for item in key_val_list:
         target_dict['id'].append(item[0])
         target_dict['label'].append(item[1])
-    print(target_dict)
+    # print(target_dict)
     merge_file = pd.DataFrame(data=target_dict)
     merge_file.to_csv(save_path,index=False)
 
 if __name__ == '__main__':
     
-    csv_list = ['../converter/csv_file/photo_guide.csv','../converter/csv_file/photo_guide_flip_exclude.csv', \
-                '../converter/csv_file/photo_guide_flip_vertical.csv','../converter/csv_file/photo_guide_flip_vertical_horizontal.csv']
-    
-    merge_csv = '../converter/csv_file/photo_guide_merge_all_exclude.csv'
+    # csv_list = ['../converter/csv_file/photo_guide.csv','../converter/csv_file/photo_guide_flip_exclude.csv', \
+    #             '../converter/csv_file/photo_guide_flip_vertical.csv','../converter/csv_file/photo_guide_flip_vertical_horizontal.csv']
+    csv_list = ['../converter/csv_file/farmer_work_crop.csv','../converter/csv_file/farmer_work_fake_test.csv']
+    merge_csv = '../converter/csv_file/farmer_work_crop_fake.csv'
     csv_merge(csv_list,merge_csv,key_col='id',value_col='label')

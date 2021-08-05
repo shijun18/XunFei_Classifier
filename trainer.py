@@ -46,7 +46,7 @@ class My_Classifier(object):
     def __init__(self, net_name=None, gamma=0.1, lr=1e-3, n_epoch=1, channels=1, num_classes=3, input_shape=None, crop=48,
                  batch_size=6, num_workers=0, device=None, pre_trained=False, weight_path=None, weight_decay=0.,
                  momentum=0.95, mean=(0.105393,), std=(0.203002,), milestones=None,use_fp16=False,transform=None,
-                 drop_rate=0.0,external_pretrained=False):
+                 drop_rate=0.0,smothing=0.1,external_pretrained=False):
         super(My_Classifier, self).__init__()
 
         self.net_name = net_name
@@ -77,6 +77,7 @@ class My_Classifier(object):
         self.milestones = milestones
         self.use_fp16 = use_fp16
         self.drop_rate = drop_rate
+        self.smothing = smothing
         self.external_pretrained = external_pretrained
 
         os.environ['CUDA_VISIBLE_DEVICES'] = self.device
@@ -117,7 +118,7 @@ class My_Classifier(object):
     def trainer(self, train_path, val_path, label_dict, cur_fold, output_dir=None, log_dir=None, optimizer='Adam',
                 loss_fun='Cross_Entropy', class_weight=None, lr_scheduler=None):
 
-        torch.manual_seed(0)
+        torch.manual_seed(1)
         print('Device:{}'.format(self.device))
         torch.backends.cudnn.enabled = True
         torch.backends.cudnn.benchmark = True
@@ -607,7 +608,7 @@ class My_Classifier(object):
 
         elif loss_fun == 'SoftCrossEntropy':
             from losses.crossentropy import SoftCrossEntropy
-            loss = SoftCrossEntropy(classes=self.num_classes,smoothing=0.1,weight=class_weight)
+            loss = SoftCrossEntropy(classes=self.num_classes,smoothing=self.smothing,weight=class_weight)
 
         elif loss_fun == 'TopkCrossEntropy':
             from losses.crossentropy import SoftCrossEntropy
@@ -615,7 +616,7 @@ class My_Classifier(object):
 
         elif loss_fun == 'TopkSoftCrossEntropy':
             from losses.crossentropy import SoftCrossEntropy
-            loss = SoftCrossEntropy(classes=self.num_classes,smoothing=0.1,weight=class_weight,reduction='topk',k=0.8)
+            loss = SoftCrossEntropy(classes=self.num_classes,smoothing=self.smothing,weight=class_weight,reduction='topk',k=0.8)
 
         elif loss_fun == 'DynamicTopkCrossEntropy':
             from losses.crossentropy import DynamicTopkSoftCrossEntropy
@@ -623,7 +624,7 @@ class My_Classifier(object):
 
         elif loss_fun == 'DynamicTopkSoftCrossEntropy':
             from losses.crossentropy import DynamicTopkSoftCrossEntropy
-            loss = DynamicTopkSoftCrossEntropy(classes=self.num_classes,smoothing=0.1,weight=class_weight)
+            loss = DynamicTopkSoftCrossEntropy(classes=self.num_classes,smoothing=self.smothing,weight=class_weight)
         
         return loss
 

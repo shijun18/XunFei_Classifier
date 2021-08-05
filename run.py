@@ -15,7 +15,8 @@ KEY = {
     'Crop_Growth':['image_id','category_id'],
     'Photo_Guide':['image','label'],
     'Leve_Disease':['image_id','category_id'],
-    'Temp_Freq':['image_id','category_id']
+    'Temp_Freq':['image_id','category_id'],
+    'Farmer_Work':['image_id','category_id']
 }
 
 ADD_FACTOR = {
@@ -23,7 +24,8 @@ ADD_FACTOR = {
     'Crop_Growth':0,
     'Photo_Guide':1,
     'Leve_Disease':1,
-    'Temp_Freq':0
+    'Temp_Freq':0,
+    'Farmer_Work':0
 }
 
 def get_cross_validation(path_list, fold_num, current_fold):
@@ -68,15 +70,10 @@ if __name__ == "__main__":
     # Set data path & classifier
     
     pre_csv_path = CSV_PATH
-    # flip_csv_path = './converter/csv_file/photo_guide_flip.csv'
-    # vertical_flip_csv_path = './converter/csv_file/photo_guide_flip_vertical.csv'
-    # flip_label_dict = csv_reader_single(flip_csv_path, key_col='id', value_col='label')
-    # vertical_flip_label_dict = csv_reader_single(vertical_flip_csv_path, key_col='id', value_col='label')
     pre_label_dict = csv_reader_single(pre_csv_path, key_col='id', value_col='label')
-
     label_dict.update(pre_label_dict)
-    # label_dict.update(flip_label_dict)
-    # label_dict.update(vertical_flip_label_dict)
+
+    
     if args.mode != 'train-cross' and args.mode != 'inf-cross':
         classifier = My_Classifier(**INIT_TRAINER)
         print(get_parameter_number(classifier.net))

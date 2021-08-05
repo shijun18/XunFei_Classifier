@@ -13,8 +13,8 @@ import numpy as np
 
 # _AVAIL_CLF = ['lr','xgboost','lgb','mlp','random_forest','extra_trees','bagging']
 # _AVAIL_CLF = ['random_forest','extra_trees','bagging']
-# _AVAIL_CLF = ['mlp']
-_AVAIL_CLF = ['lr']
+_AVAIL_CLF = ['mlp']
+# _AVAIL_CLF = ['lr']
 # _AVAIL_CLF = ['poly']
 # _AVAIL_CLF = ['mlp']
 
@@ -61,7 +61,7 @@ def scaler_normalize(train_df,test_df,scale_list=None,label=None):
 
     train_df = data[:train_df.shape[0]]
     train_df[label] = target
-    test_df = data[test_df.shape[0]:]
+    test_df = data[train_df.shape[0]:]
     # print(train_df)
     # print(test_df)
     return train_df,test_df
@@ -114,17 +114,18 @@ if __name__ == "__main__":
     
     raw_list = ["AQI","PM2.5", "PM10"]
     iaqi_list = ["PM2.5_IAQI", "PM10_IAQI"]
+    exclude_iaqi_list = ["SO2_IAQI", "CO_IAQI", "NO2_IAQI", "O3_8h_IAQI"]
     extra_list = ['month','day'] 
     serious_list =['重度污染', '良', '中度污染', '轻度污染', '严重污染']
     
-    # scale_list = raw_list + iaqi_list
+    scale_list = raw_list
     # # scale_list = None
-    # train_df,test_df = scaler_normalize(train_df,test_df,scale_list,'IPRC')
+    train_df,test_df = scaler_normalize(train_df,test_df,scale_list,'IPRC')
     
-    train_df = new_normalize(train_df,factor_dict)
-    test_df = new_normalize(test_df,factor_dict)
+    # train_df = new_normalize(train_df,factor_dict)
+    # test_df = new_normalize(test_df,factor_dict)
 
-    fea_list = [f for f in train_df.columns if f not in ['IPRC','日期','质量等级'] + ["SO2", "CO", "NO2", "O3_8h"]] 
+    fea_list = [f for f in train_df.columns if f not in ['IPRC','日期','质量等级'] + ["PM10","SO2", "CO", "NO2", "O3_8h"]] 
     test_df = test_df[fea_list]
     train_df = train_df[fea_list + ['IPRC']]
 

@@ -4,7 +4,7 @@ from kd_trainer import My_Classifier
 import pandas as pd
 from data_utils.csv_reader import csv_reader_single
 from kd_config import INIT_TRAINER, SETUP_TRAINER,TASK,NUM_CLASSES
-from kd_config import VERSION, CURRENT_FOLD, FOLD_NUM, WEIGHT_PATH_LIST, TTA_TIMES, CSV_PATH
+from kd_config import VERSION, CURRENT_FOLD, FOLD_NUM, WEIGHT_PATH_LIST, TTA_TIMES, CSV_PATH,TEACHER_WEIGHT_PATH_LIST
 
 import time
 import numpy as np
@@ -90,8 +90,9 @@ if __name__ == "__main__":
         loss_list = []
         acc_list = []
 
-        for current_fold in range(2, FOLD_NUM+1):
+        for current_fold in range(1, FOLD_NUM+1):
             print("=== Training Fold ", current_fold, " ===")
+            INIT_TRAINER['teacher_weight_path'] = TEACHER_WEIGHT_PATH_LIST[current_fold-1]
             classifier = My_Classifier(**INIT_TRAINER)
 
             if current_fold == 0:
@@ -105,6 +106,7 @@ if __name__ == "__main__":
             SETUP_TRAINER['val_path'] = val_path
             SETUP_TRAINER['label_dict'] = label_dict
             SETUP_TRAINER['cur_fold'] = current_fold
+            
 
             start_time = time.time()
             val_loss, val_acc = classifier.trainer(**SETUP_TRAINER)

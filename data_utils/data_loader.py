@@ -33,6 +33,7 @@ class DataGenerator(Dataset):
       image = Image.open(self.path_list[index]).convert('RGB')
     else:
       image = Image.open(self.path_list[index]).convert('L')
+      # image = Image.open(self.path_list[index]).convert('RGB').split()[1]
     if self.transform is not None:
       image = self.transform(image)
 
