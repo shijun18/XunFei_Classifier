@@ -1,8 +1,10 @@
+from genericpath import exists
 import os
 import pandas as pd
 from PIL import Image
 import numpy as np
 from tqdm import tqdm
+import librosa
 
 def sample_count(input_path,save_path):
 
@@ -74,6 +76,53 @@ def cal_mean_std(data_path):
     print('b std:%.3f' % b_std)
 
 
+
+def cal_mean_std_single(data_path):
+    l_mean = []
+    l_std = []
+
+    for item in tqdm(data_path):
+        img = Image.open(item).convert('L')
+        l_img = (np.array(img.resize((512,512))).astype(np.float32)/255.0).flatten()
+        l_mean.append(np.mean(l_img))
+    
+    l_mean = np.mean(l_mean)
+
+    for item in tqdm(data_path):
+        img = Image.open(item).convert('L')
+        l_img = (np.array(img.resize((512,512))).astype(np.float32)/255.0).flatten()
+        l_std.append(np.mean(np.power(l_img - l_mean,2)))
+
+    l_std = np.sqrt(np.mean(l_std))
+
+    print('l mean:%.3f' % l_mean)
+    print('l std:%.3f' % l_std)
+
+
+def voice_time(input_path,save_path):
+    info = []
+    for subitem in os.scandir(input_path):
+        if subitem.is_dir():
+            for item in os.scandir(subitem.path):
+                info_item = [item.name]
+                try:
+                    info_item.append(librosa.get_duration(filename=item.path))
+                except:
+                    info_item.append(-1)
+                info.append(info_item)
+        else:
+            info_item = [subitem.name]
+            try:
+                info_item.append(librosa.get_duration(filename=subitem.path))
+            except:
+                info_item.append(-1)
+            info.append(info_item)
+    
+    col = ['file','time']
+    csv_file = pd.DataFrame(columns=col,data=info)
+    csv_file.to_csv(save_path,index=False)
+    
+
 if __name__ == '__main__':
     # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Adver_Material/train'
     # save_path = './adver_material_count.csv'
@@ -84,9 +133,22 @@ if __name__ == '__main__':
     # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Leve_Disease/train'
     # cal_mean_std(input_path)
 
-
-    input_csv = './csv_file/farmer_work.csv'
+    '''
+    input_csv = './csv_file/farmer_work_lite_external_v3.csv'
     path_list = pd.read_csv(input_csv)['id'].values.tolist()
     test_path = '../dataset/Farmer_Work/test/'
     path_list += [os.path.join(test_path,case) for case in os.listdir(test_path)]
-    cal_mean_std(path_list)
+    # cal_mean_std(path_list)
+    cal_mean_std_single(path_list)
+    '''
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Bird_Voice/train_data'
+    save_path = './bird_voice_train_time.csv'
+    voice_time(input_path,save_path)
+
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Bird_Voice/dev_data'
+    save_path = './bird_voice_dev_time.csv'
+    voice_time(input_path,save_path)
+
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Bird_Voice/test_data'
+    save_path = './bird_voice_test_time.csv'
+    voice_time(input_path,save_path)
