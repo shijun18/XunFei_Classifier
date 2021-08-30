@@ -16,7 +16,9 @@ KEY = {
     'Photo_Guide':['image','label'],
     'Leve_Disease':['image_id','category_id'],
     'Temp_Freq':['image_id','category_id'],
-    'Farmer_Work':['image_id','category_id']
+    'Farmer_Work':['image_id','category_id'],
+    'Covid19':['sample_id','category_id'],
+    'Family_Env':['id','label']
 }
 
 ADD_FACTOR = {
@@ -25,8 +27,43 @@ ADD_FACTOR = {
     'Photo_Guide':1,
     'Leve_Disease':1,
     'Temp_Freq':0,
-    'Farmer_Work':0
+    'Farmer_Work':0,
+    'Covid19':0,
+    'Family_Env':1
 }
+
+
+
+def get_cross_validation_balance(path_list, fold_num, current_fold):
+    assert len(path_list) == 2
+    train_path = []
+    validation_path = []
+
+    for sublist in path_list:
+        train_id = []
+        validation_id = []
+        _len_ = len(sublist) // fold_num
+
+        end_index = current_fold * _len_
+        start_index = end_index - _len_
+        if current_fold == fold_num:
+            validation_id.extend(sublist[start_index:])
+            train_id.extend(sublist[:start_index])
+        else:
+            validation_id.extend(sublist[start_index:end_index])
+            train_id.extend(sublist[:start_index])
+            train_id.extend(sublist[end_index:])
+
+        train_path.append(train_id)
+        validation_path.append(validation_id)
+
+    print("Train set length:", [len(case) for case in train_path],
+          "\nVal set length:", [len(case) for case in validation_path])
+    tmp_validation_path = []
+    for sublist in validation_path:
+        tmp_validation_path += sublist
+    return train_path, tmp_validation_path
+
 
 def get_cross_validation(path_list, fold_num, current_fold):
 
@@ -73,6 +110,12 @@ if __name__ == "__main__":
     pre_label_dict = csv_reader_single(pre_csv_path, key_col='id', value_col='label')
     label_dict.update(pre_label_dict)
 
+    if 'balance' in VERSION:
+        path_list = []
+        path_list.append([case for case in label_dict.keys() if int(label_dict[case]) == 0])
+        path_list.append([case for case in label_dict.keys() if int(label_dict[case]) == 1])
+    else:
+        path_list = list(label_dict.keys())
     
     if args.mode != 'train-cross' and args.mode != 'inf-cross':
         classifier = My_Classifier(**INIT_TRAINER)
@@ -81,7 +124,6 @@ if __name__ == "__main__":
     # Training with cross validation
     ###############################################
     if args.mode == 'train-cross':
-        path_list = list(label_dict.keys())
         print("dataset length is %d"%len(path_list))
 
         loss_list = []
@@ -89,15 +131,21 @@ if __name__ == "__main__":
 
         for current_fold in range(1, FOLD_NUM+1):
             print("=== Training Fold ", current_fold, " ===")
+            if INIT_TRAINER['pre_trained']:
+                INIT_TRAINER['weigth_path'] = WEIGHT_PATH_LIST[current_fold-1]
+            
             classifier = My_Classifier(**INIT_TRAINER)
 
             if current_fold == 0:
                 print(get_parameter_number(classifier.net))
 
-            train_path, val_path = get_cross_validation(
-                path_list, FOLD_NUM, current_fold)
-            # train_path, val_path = get_cross_val_by_class(
-            #     path_list, FOLD_NUM, current_fold) # split by class
+            if 'balance' in VERSION:
+                train_path, val_path = get_cross_validation_balance(
+                    path_list, FOLD_NUM, current_fold)    
+            else:
+                train_path, val_path = get_cross_validation(
+                    path_list, FOLD_NUM, current_fold)
+
             SETUP_TRAINER['train_path'] = train_path
             SETUP_TRAINER['val_path'] = val_path
             SETUP_TRAINER['label_dict'] = label_dict
@@ -117,11 +165,14 @@ if __name__ == "__main__":
     # Training
     ###############################################
     elif args.mode == 'train':
-        path_list = list(label_dict.keys())
+        
         print("dataset length is %d"%len(path_list))
-
-        train_path, val_path = get_cross_validation(
-            path_list, FOLD_NUM, CURRENT_FOLD)
+        if 'balance' in VERSION:
+            train_path, val_path = get_cross_validation_balance(
+                path_list, FOLD_NUM, CURRENT_FOLD)
+        else:
+            train_path, val_path = get_cross_validation(
+                path_list, FOLD_NUM, CURRENT_FOLD)
         SETUP_TRAINER['train_path'] = train_path
         SETUP_TRAINER['val_path'] = val_path
         SETUP_TRAINER['label_dict'] = label_dict

@@ -20,7 +20,9 @@ from PIL import Image
 from utils import remove_dir, make_dir,dfs_remove_weight
 from torch.cuda.amp import autocast as autocast
 from torch.cuda.amp import GradScaler
-from data_utils.transforms import RandomRotate,DeNoise,SquarePad,AddNoise
+from data_utils.transforms import RandomRotate,DeNoise,SquarePad,AddNoise,Trimming
+
+from sklearn import metrics
 
 # GPU version.
 
@@ -98,8 +100,8 @@ class My_Classifier(object):
             tr.RandomPerspective(distortion_scale=0.6, p=0.5), #5
             # RandomRotate([-15, -10, -5, 0, 5, 10, 15]), #6
             tr.RandomRotation((-15,+15)), #6
-            tr.RandomHorizontalFlip(p=1), #7
-            tr.RandomVerticalFlip(p=1), #8
+            tr.RandomHorizontalFlip(p=0.5), #7
+            tr.RandomVerticalFlip(p=0.5), #8
             tr.ToTensor(), #9
             tr.Normalize(self.mean, self.std), #10
             SquarePad(), #11
@@ -110,13 +112,14 @@ class My_Classifier(object):
             tr.Lambda(lambda crops: torch.stack([torch.squeeze(crop) for crop in crops])), #16
             tr.RandomEqualize(p=0.5), #17
             tr.GaussianBlur(3), #18
-            tr.RandomErasing(scale=(0.01, 0.05), ratio=(1.1, 1.3)) #19
+            tr.RandomErasing(scale=(0.01, 0.05), ratio=(1.1, 1.3)), #19
+            Trimming(),#20
         ]
 
         self.transform = [self.transform_list[i-1] for i in transform]
 
     def trainer(self, train_path, val_path, label_dict, cur_fold, output_dir=None, log_dir=None, optimizer='Adam',
-                loss_fun='Cross_Entropy', class_weight=None, lr_scheduler=None):
+                loss_fun='Cross_Entropy', class_weight=None, lr_scheduler=None,balance_sample=False,monitor='val_acc'):
 
         torch.manual_seed(1)
         print('Device:{}'.format(self.device))
@@ -156,8 +159,13 @@ class My_Classifier(object):
         # dataloader setting
         train_transformer = transforms.Compose(self.transform)
 
-        train_dataset = DataGenerator(
-            train_path, label_dict, channels=self.channels, transform=train_transformer)
+        if balance_sample:
+            from data_utils.data_loader import BalanceDataGenerator as BalanceDataGenerator
+            train_dataset = BalanceDataGenerator(
+                train_path, label_dict, channels=self.channels, transform=train_transformer)
+        else:
+            train_dataset = DataGenerator(
+                train_path, label_dict, channels=self.channels, transform=train_transformer)
 
         train_loader = DataLoader(
             train_dataset,
@@ -187,22 +195,22 @@ class My_Classifier(object):
         max_acc = 0.
 
 
-        early_stopping = EarlyStopping(patience=50,verbose=True,monitor='val_acc',best_score=self.metric,op_type='max')
+        early_stopping = EarlyStopping(patience=50,verbose=True,monitor=monitor,best_score=self.metric,op_type='max')
         for epoch in range(self.start_epoch, self.n_epoch):
-            train_loss, train_acc = self._train_on_epoch(epoch, net, loss, optimizer, train_loader,scaler)
+            train_loss, train_acc,train_f1 = self._train_on_epoch(epoch, net, loss, optimizer, train_loader,scaler)
 
-            val_loss, val_acc = self._val_on_epoch(epoch, net, loss, val_path, label_dict)
+            val_loss, val_acc,val_f1 = self._val_on_epoch(epoch, net, loss, val_path, label_dict)
 
             torch.cuda.empty_cache()
 
             if lr_scheduler is not None:
                 lr_scheduler.step()
 
-            print('Train epoch:{},train_loss:{:.5f},train_acc:{:.5f}'
-                  .format(epoch, train_loss, train_acc))
+            print('Train epoch:{},train_loss:{:.5f},train_acc:{:.5f},train_f1:{:.5f}'
+                  .format(epoch, train_loss, train_acc,train_f1))
 
-            print('Val epoch:{},val_loss:{:.5f},val_acc:{:.5f}'
-                  .format(epoch, val_loss, val_acc))
+            print('Val epoch:{},val_loss:{:.5f},val_acc:{:.5f},val_f1:{:.5f}'
+                  .format(epoch, val_loss, val_acc, val_f1))
 
             self.writer.add_scalars(
                 'data/loss', {'train': train_loss, 'val': val_loss}, epoch
@@ -210,15 +218,23 @@ class My_Classifier(object):
             self.writer.add_scalars(
                 'data/acc', {'train': train_acc, 'val': val_acc}, epoch
             )
+            self.writer.add_scalars(
+                'data/f1', {'train': train_f1, 'val': val_f1}, epoch
+            )
             self.writer.add_scalar(
                 'data/lr', optimizer.param_groups[0]['lr'], epoch
             )
 
-            early_stopping(val_acc)
+            if monitor == 'val_acc':
+                early_stopping(val_acc)
+                val_metric = val_acc
+            elif monitor == 'val_f1':
+                early_stopping(val_f1)
+                val_metric = val_f1
             # if val_loss < self.loss_threshold:
-            if val_acc > self.metric:
+            if val_metric > self.metric:
                 self.loss_threshold = val_loss
-                self.metric = val_acc
+                self.metric = val_metric
                 
                 min_loss = min(min_loss, val_loss)
                 max_acc = max(max_acc, val_acc)
@@ -235,8 +251,8 @@ class My_Classifier(object):
                     'optimizer': optimizer.state_dict()
                 }
 
-                file_name = 'epoch:{}-train_loss:{:.5f}-val_loss:{:.5f}-train_acc:{:.5f}-val_acc:{:.5f}.pth'.format(
-                    epoch, train_loss, val_loss, train_acc, val_acc)
+                file_name = 'epoch:{}-train_loss:{:.5f}-val_loss:{:.5f}-train_acc:{:.5f}-val_acc:{:.5f}-val_f1:{:.5f}.pth'.format(
+                    epoch, train_loss, val_loss, train_acc, val_acc, val_f1)
                 print('Save as --- ' + file_name)
                 save_path = os.path.join(output_dir, file_name)
 
@@ -257,7 +273,7 @@ class My_Classifier(object):
 
         train_loss = AverageMeter()
         train_acc = AverageMeter()
-
+        train_f1 = AverageMeter()
         for step, sample in enumerate(train_loader):
 
             data = sample['image']
@@ -284,23 +300,25 @@ class My_Classifier(object):
 
             # measure accuracy and record loss
             acc = accuracy(output.data, target)[0]
+            f1 = f1_score(output.data, target)
             train_loss.update(loss.item(), data.size(0))
             train_acc.update(acc.item(), data.size(0))
-
+            train_f1.update(f1,data.size(0))
             torch.cuda.empty_cache()
 
-            print('epoch:{},step:{},train_loss:{:.5f},train_acc:{:.5f},lr:{}'
-                  .format(epoch, step, loss.item(), acc.item(), optimizer.param_groups[0]['lr']))
+            print('epoch:{},step:{},train_loss:{:.5f},train_acc:{:.5f},train_f1:{:.5f},lr:{}'
+                  .format(epoch, step, loss.item(), acc.item(), f1, optimizer.param_groups[0]['lr']))
 
             if self.global_step % 10 == 0:
                 self.writer.add_scalars(
                     'data/train_loss_acc', {'train_loss': loss.item(),
-                                            'train_acc': acc.item()}, self.global_step
+                                            'train_acc': acc.item(),
+                                            'train_f1':f1}, self.global_step
                 )
 
             self.global_step += 1
 
-        return train_loss.avg, train_acc.avg
+        return train_loss.avg, train_acc.avg,train_f1.avg
 
     def _val_on_epoch(self, epoch, net, criterion, val_path, label_dict):
 
@@ -321,6 +339,7 @@ class My_Classifier(object):
 
         val_loss = AverageMeter()
         val_acc = AverageMeter()
+        val_f1 = AverageMeter()
 
         with torch.no_grad():
             for step, sample in enumerate(val_loader):
@@ -338,15 +357,17 @@ class My_Classifier(object):
 
                 # measure accuracy and record loss
                 acc = accuracy(output.data, target)[0]
+                f1 = f1_score(output.data, target)
                 val_loss.update(loss.item(), data.size(0))
                 val_acc.update(acc.item(), data.size(0))
+                val_f1.update(f1,data.size(0))
 
                 torch.cuda.empty_cache()
 
-                print('epoch:{},step:{},val_loss:{:.5f},val_acc:{:.5f}'
-                      .format(epoch, step, loss.item(), acc.item()))
+                print('epoch:{},step:{},val_loss:{:.5f},val_acc:{:.5f},val_f1:{:.5f}'
+                      .format(epoch, step, loss.item(), acc.item(),f1))
 
-        return val_loss.avg, val_acc.avg
+        return val_loss.avg, val_acc.avg, val_f1.avg
 
     def hook_fn_forward(self, module, input, output):
         # print(module)
@@ -469,7 +490,6 @@ class My_Classifier(object):
         net.eval()
 
         test_transformer = transforms.Compose(self.transform)
-
         test_dataset = DataGenerator(test_path, channels=self.channels, transform=None)
 
         prob_output = []
@@ -596,6 +616,10 @@ class My_Classifier(object):
             import model.finenet as finenet
             net = finenet.__dict__[net_name](input_channels=self.channels,num_classes=self.num_classes)
 
+        elif net_name.startswith('bilinearnet'):
+            import model.bilinearnet as bilinearnet
+            net = bilinearnet.__dict__[net_name](input_channels=self.channels,num_classes=self.num_classes)
+
         return net
 
 
@@ -625,6 +649,10 @@ class My_Classifier(object):
         elif loss_fun == 'DynamicTopkSoftCrossEntropy':
             from losses.crossentropy import DynamicTopkSoftCrossEntropy
             loss = DynamicTopkSoftCrossEntropy(classes=self.num_classes,smoothing=self.smothing,weight=class_weight)
+        
+        elif loss_fun == 'F1_Loss':
+            from losses.f1_loss import F1_Loss
+            loss = F1_Loss()
         
         return loss
 
@@ -700,6 +728,15 @@ def accuracy(output, target, topk=(1,)):
         res.append(correct_k.mul_(1/batch_size))
     return res
 
+def f1_score(output, target):
+    y_pred = torch.softmax(output, dim=1) #N*C
+    y_pred = torch.argmax(y_pred,dim=1).cpu().numpy().tolist()
+
+    y_true = target.cpu().numpy().tolist()
+
+    f1 = metrics.f1_score(y_true,y_pred,average='macro')
+    
+    return f1
 
 class EarlyStopping(object):
     """Early stops the training if performance doesn't improve after a given patience."""

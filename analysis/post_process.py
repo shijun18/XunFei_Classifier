@@ -35,12 +35,12 @@ def diff_csv(pred_csv,target_csv,pred_key='post_label',target_key='category_id')
 
 if __name__ == "__main__":
 
-    threshold = 0.60
+    threshold = 0.40
     threshold_list = []
     for i in range(100):
         print("*****%.3f*****"%threshold)
         sim_path = "/staff/honeyk/project/XunFei_Classifier-main/analysis/sim_csv/farmer_worker/test_sim.csv"
-        input_path = './result/Farmer_Work/v6.0-crop-pretrained/submission_ave.csv'
+        input_path = './result/Farmer_Work/v6.0-crop-external-pretrained-new/submission_ave.csv'
 
         data = read_csv(sim_path)
         class_result = union_find(data,threshold=threshold)
@@ -57,14 +57,16 @@ if __name__ == "__main__":
 
         post_label = pd.read_csv(save_path)['post_label'].values.tolist() 
 
-        # for i in range(len(id_list)):
-        #     if raw_label[i] != post_label[i]:
-        #         print(id_list[i])
-
+        for i in range(len(id_list)):
+            if raw_label[i] != post_label[i]:
+                print(id_list[i])
+                print('raw:',raw_label[i])
+                print('post:',post_label[i])
+                
         threshold_list.append(threshold)
         target_csv = input_path # It is an option to choose the csv that you have submitted
         diff = diff_csv(save_path,target_csv)
         
         threshold += 0.01
-        break
+        # break
     print(threshold_list)

@@ -1,8 +1,10 @@
 from genericpath import exists
 from math import log
 import os
+import re
 from PIL import Image
 import numpy as np
+from numpy.lib.function_base import extract
 import librosa
 import noisereduce as nr
 from PIL import ImageFilter
@@ -58,7 +60,7 @@ def stretch(x, factor, nfft=2048):
     return librosa.core.istft(stft_new.transpose())
 
 
-def preprocess(input_path,save_path):
+def make_data_single(input_path,save_path):
     save_path = f'{save_path}/{os.path.basename(input_path)}'
     img = Image.open(input_path).convert('RGB')
     # print(img.size)
@@ -91,7 +93,7 @@ def make_data(input_path,save_path):
             tmp_save_path = os.path.join(save_path,entry.name)
             make_data(entry.path,tmp_save_path)
         else:
-            preprocess(entry.path,save_path)
+            make_data_single(entry.path,save_path)
 
 
 def extract_frame(input_path,save_path):
@@ -115,109 +117,103 @@ def extract_frame(input_path,save_path):
             success, frame = video_capture.read()
 
 
-
-def voice_to_png(input_path,denoise=False,palette=None):
-    x,sr = librosa.load(input_path,sr=44100,duration=min(56,librosa.get_duration(filename=input_path)))
-    if denoise:
-        x = nr.reduce_noise(y=x, sr=sr)
-    melspec = librosa.feature.melspectrogram(y=x, sr=sr,n_fft=2048,hop_length=1024,n_mels=128)
-    log_melspec = librosa.power_to_db(melspec,ref=np.max)
-    # scale to [0,1]
-    log_melspec = (log_melspec - np.min(log_melspec))/(np.max(log_melspec)-np.min(log_melspec))
-    
-    # extract
-    mel_sum = np.sum(log_melspec,axis=0)
-    log_melspec = log_melspec[:,mel_sum > 0.01*log_melspec.shape[0]]
-    mel_sum = np.sum(log_melspec,axis=1)
-    log_melspec = log_melspec[mel_sum > 0.01*log_melspec.shape[1]]
-
-    voice_array = np.asarray(log_melspec*255,dtype=np.uint8)
-    img = Image.fromarray(voice_array).convert('RGB')
-    img = img.filter(ImageFilter.MedianFilter(3))
-    img = img.convert('P')
-    if palette is not None:
-        img.putpalette(palette) 
-    return img
-
-
 def random_aug(wav,sr):
-    aug_list = ['add_noise','time_shifting','time_stretch','pitch_shifting']
+    aug_list = ['add_noise','time_shifting','time_stretch','pitch_shifting',None]
     aug_op = random.choice(aug_list)
     if aug_op == 'add_noise':
-        factor = random.choice(range(8,12))
+        factor = random.choice(range(8,12,2))
         factor *= 0.001
         aug_wav = add_noise(wav,factor)
     elif aug_op == 'time_shifting':
-        factor = random.choice(range(5,15,2))
+        factor = random.choice(range(5,20,5))
         aug_wav = time_shifting(wav,sr,factor)
     elif aug_op == 'time_stretch':
-        factor = random.choice(range(5,15,2))
+        factor = random.choice(range(5,20,5))
         factor *= 0.1
         aug_wav = time_stretch(wav,factor)
     elif aug_op == 'pitch_shifting':
-        factor = random.choice(range(-5,5))
+        factor = random.choice(range(-10,10,5))
         aug_wav = pitch_shifting(wav,sr,n_steps=factor)
+    else:
+        aug_wav = wav
     return aug_wav
 
 
-def voice_to_png_aug(input_path,denoise=False,palette=None):
+def voice_to_png(input_path,denoise=False,palette=None,aug=False,remove=False):
     x,sr = librosa.load(input_path,sr=44100,duration=min(56,librosa.get_duration(filename=input_path)))
     if denoise:
         x = nr.reduce_noise(y=x, sr=sr)
-    x = random_aug(x,sr)
+    if aug:
+        x = random_aug(x,sr)
     melspec = librosa.feature.melspectrogram(y=x, sr=sr,n_fft=2048,hop_length=1024,n_mels=128)
     log_melspec = librosa.power_to_db(melspec,ref=np.max)
     # scale to [0,1]
-    log_melspec = (log_melspec - np.min(log_melspec))/(np.max(log_melspec)-np.min(log_melspec))
-    
-    # extract
-    mel_sum = np.sum(log_melspec,axis=0)
-    log_melspec = log_melspec[:,mel_sum > 0.01*log_melspec.shape[0]]
-    mel_sum = np.sum(log_melspec,axis=1)
-    log_melspec = log_melspec[mel_sum > 0.01*log_melspec.shape[1]]
+    max_val = np.max(log_melspec)
+    min_val = np.min(log_melspec)
 
-    voice_array = np.asarray(log_melspec*255,dtype=np.uint8)
-    img = Image.fromarray(voice_array).convert('RGB')
-    img = img.filter(ImageFilter.MedianFilter(3))
-    img = img.convert('P')
-    if palette is not None:
-        img.putpalette(palette) 
-    return img
+    if max_val > min_val:
+        log_melspec = (log_melspec - min_val)/(max_val - min_val)
+        # remove
+        if remove:
+            mel_sum = np.sum(log_melspec,axis=0)
+            log_melspec = log_melspec[:,mel_sum > 0.01*log_melspec.shape[0]]
+            mel_sum = np.sum(log_melspec,axis=1)
+            log_melspec = log_melspec[mel_sum > 0.01*log_melspec.shape[1]]
+
+        voice_array = np.asarray(log_melspec*255,dtype=np.uint8)
+
+        if voice_array.shape[0] > 0 and voice_array.shape[1] > 0:
+            img = Image.fromarray(voice_array).convert('RGB')
+            # img = img.filter(ImageFilter.MedianFilter(3))
+            if palette is not None:
+                img = img.convert('P')
+                img.putpalette(palette) 
+            return img
+        else:
+            print(log_melspec.shape)
+            print('shape error!')
+            return None
+    else:
+        print(max_val,min_val)
+        print('minmax error!')
+        return None
 
 
-def voice_to_spectrogram(input_path,save_path,denoise=False,palette=None):
+def voice_to_spectrogram(input_path,save_path,denoise=False,palette=None,remove=False):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     for item in os.scandir(input_path):
         if item.is_dir():
             tmp_save_path = os.path.join(save_path,item.name)
-            voice_to_spectrogram(item.path,tmp_save_path,denoise,palette)
+            voice_to_spectrogram(item.path,tmp_save_path,denoise,palette,remove)
         else:
             # print(item.name)
             tmp_save_path = os.path.join(save_path,f'{os.path.splitext(item.name)[0]}.png')
             try:
-                img = voice_to_png(item.path,denoise,palette)
-                img.save(tmp_save_path)
-                print('save as:',os.path.basename(tmp_save_path))
+                img = voice_to_png(item.path,denoise,palette,remove)
+                if img is not None:
+                    img.save(tmp_save_path)
+                    print('save as:',os.path.basename(tmp_save_path))
             except:
                 print(item.name)
                 continue
 
 
-def voice_to_spectrogram_aug(input_path,save_path,denoise=False,palette=None,aug_times=10):
+def voice_to_spectrogram_aug(input_path,save_path,denoise=False,palette=None,aug_times=10,remove=False):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     for item in os.scandir(input_path):
         if item.is_dir():
             tmp_save_path = os.path.join(save_path,item.name)
-            voice_to_spectrogram(item.path,tmp_save_path,denoise,palette,aug_times)
+            voice_to_spectrogram_aug(item.path,tmp_save_path,denoise,palette,aug_times,remove)
         else:
             for i in range(aug_times):
                 tmp_save_path = os.path.join(save_path,f'{os.path.splitext(item.name)[0]}_{str(i)}.png')
-                print('save as:',os.path.basename(tmp_save_path))
                 try:
-                    img = voice_to_png_aug(item.path,denoise,palette)
-                    img.save(tmp_save_path)
+                    img = voice_to_png(item.path,denoise,palette,aug=True,remove=remove)
+                    if img is not None:
+                        img.save(tmp_save_path)
+                        print('save as:',os.path.basename(tmp_save_path))
                 except:
                     continue
 
@@ -254,21 +250,22 @@ if __name__ == '__main__':
 
     # input_path = '../dataset/Family_Env/audio/train'
     # save_path = '../dataset/Family_Env/train'
-    # voice_to_spectrogram(input_path,save_path,False,palette)
+    # voice_to_spectrogram(input_path,save_path,False,palette,remove=True)
 
     # input_path = '../dataset/Family_Env/audio/test'
     # save_path = '../dataset/Family_Env/test'
-    # voice_to_spectrogram(input_path,save_path,False,palette)
+    # voice_to_spectrogram(input_path,save_path,False,palette,remove=True)
 
     
     input_path = '../dataset/Covid19/audio/train/cough/Negative'
-    save_path = '../dataset/Covid19/train/0'
-    voice_to_spectrogram(input_path,save_path,False,palette)
+    save_path = '../dataset/Covid19/raw_train/0'
+    voice_to_spectrogram(input_path,save_path,False,palette,remove=False)
 
     input_path = '../dataset/Covid19/audio/train/cough/Positive'
-    save_path = '../dataset/Covid19/train/1'
-    voice_to_spectrogram_aug(input_path,save_path,False,palette,aug_times=5)
+    save_path = '../dataset/Covid19/raw_train/1'
+    # voice_to_spectrogram_aug(input_path,save_path,False,palette,aug_times=5,remove=False)
+    voice_to_spectrogram(input_path,save_path,False,palette,remove=False)
 
-    input_path = '../dataset/Covid19/audio/test'
-    save_path = '../dataset/Covid19/test'
-    voice_to_spectrogram(input_path,save_path,False,palette)
+    # input_path = '../dataset/Covid19/audio/test'
+    # save_path = '../dataset/Covid19/test'
+    # voice_to_spectrogram(input_path,save_path,False,palette,remove=False)

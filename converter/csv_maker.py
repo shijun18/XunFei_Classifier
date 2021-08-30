@@ -2,7 +2,7 @@ import os
 import pandas as pd 
 import glob
 import random
-
+import shutil
 
 def make_label_csv(input_path,csv_path,target_list=None):
 
@@ -40,6 +40,7 @@ def make_csv(input_path,csv_path):
     df.to_csv(csv_path,index=False)
 
 
+
 if __name__ == "__main__":
   
     # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Adver_Material/train'
@@ -53,11 +54,11 @@ if __name__ == "__main__":
     # csv_path = './csv_file/temp_freq.csv'
     # make_label_csv(input_path,csv_path)
 
-    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Temp_Freq/test'
-    # csv_path = './csv_file/test_temp_freq.csv'
-    # make_csv(input_path,csv_path)
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Farmer_Work/post-test-lite'
+    csv_path = './csv_file/farmer_work_post_test_lite.csv'
+    make_label_csv(input_path,csv_path)
 
     
-    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Farmer_Work/train-external'
-    csv_path = './csv_file/farmer_work_external.csv'
-    make_label_csv(input_path,csv_path)
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Leve_Disease/processed_train'
+    # csv_path = './csv_file/processed_leve_disease.csv'
+    # make_label_csv(input_path,csv_path)

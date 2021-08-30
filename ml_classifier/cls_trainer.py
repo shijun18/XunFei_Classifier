@@ -15,6 +15,7 @@ from xgboost import XGBClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import f1_score
 import warnings
 warnings.filterwarnings("ignore")
@@ -85,7 +86,7 @@ class ML_Classifier(object):
       self.clf = self._get_clf()  
     
 
-    def trainer(self,train_df,target_key,random_state=21,metric=None,k_fold=5,pred_flag=False,test_df=None,test_csv=None,save_path=None,encoder_flag=False,sub_col=None,id_name=None):
+    def trainer(self,train_df,target_key,random_state=21,metric=None,k_fold=5,pred_flag=False,test_df=None,test_csv=None,save_path=None,encoder_flag=False,scale_flag=False,sub_col=None,id_name=None):
         params = self.params
         fea_list= [f for f in train_df.columns if f != target_key]
         print(fea_list)
@@ -96,8 +97,18 @@ class ML_Classifier(object):
         # print(len(set(train_df[target_key])))
 
         Y = np.asarray(train_df[target_key])
+        num_classes = len(set(Y))
         X = np.asarray(train_df[fea_list])
         test = np.asarray(test_df[fea_list])
+
+        if scale_flag:
+            X_len = X.shape[0]
+            data_scaler = StandardScaler()
+            cat_data = np.concatenate([X,test],axis=0)
+            cat_data= data_scaler.fit_transform(cat_data)
+
+            X = cat_data[:X_len]
+            test = cat_data[X_len:]
       
         kfold = KFold(n_splits=k_fold,shuffle=True,random_state=random_state)
 
@@ -106,6 +117,7 @@ class ML_Classifier(object):
         print(X.shape,test.shape)
 
         predictions = []
+        predictions_prob = []
         for fold_num,(train_index,val_index) in enumerate(kfold.split(X)):
             print(f'***********fold {fold_num+1} start!!***********')
             x_train, x_val = X[train_index], X[val_index]
@@ -129,9 +141,8 @@ class ML_Classifier(object):
             print("fold {} Best score:{}".format(fold_num + 1,best_score))
             print("fold {} Train score:{}".format(fold_num + 1,train_score))
             print("fold {} Test score:{}".format(fold_num + 1,test_score))
-            print("fold {} Best parameter:\n".format(fold_num + 1))
-            
-            print('Best parameters:')
+            print("fold {} Best parameter:".format(fold_num + 1))
+      
             for key in params.keys():
                 print('%s:'%key)
                 print(best_model.get_params()[key])
@@ -156,20 +167,39 @@ class ML_Classifier(object):
             if pred_flag and test is not None:
                 pred = model.predict(test)
                 predictions.append(pred)
-        
+                # prob
+                pred_prob = model.predict_proba(test)
+                predictions_prob.append(pred_prob)
+
         final_result = []
         vote_array = np.asarray(predictions).astype(int)
         final_result.extend([max(list(vote_array[:,i]),key=list(vote_array[:,i]).count) for i in range(vote_array.shape[1])])
+        
+        prob_array = np.mean(predictions_prob,axis=0) # N*C
+        prob_final_result = np.argmax(prob_array,axis=1).tolist() # N
 
         if encoder_flag:
             final_result = le.inverse_transform(final_result)
-        try:
-            pred_df = pd.read_csv(test_csv,encoding='gbk')
-        except:
-            pred_df = pd.read_csv(test_csv,encoding='utf-8')
-        pred_df[sub_col[0]] = pred_df[id_name]
+            prob_final_result = le.inverse_transform(prob_final_result)
+
+        
+        test_df = pd.read_csv(test_csv,encoding='utf-8')
+        
+        pred_df = {
+          sub_col[0]:[case for case in test_df[id_name].values.tolist()]
+        }
+        pred_df = pd.DataFrame(data=pred_df)
+
+        pred_df[sub_col[0]] = test_df[id_name]
+        # vote
         pred_df[sub_col[1]] = final_result
-        pred_df[sub_col].to_csv(f'{save_path}/{self.clf_name}_result.csv',index=False)
+        pred_df.to_csv(f'{save_path}/{self.clf_name}_vote_result.csv',index=False)
+        
+        # prob
+        for i in range(num_classes):
+            pred_df[f'prob_{str(i)}'] = prob_array[:,i].tolist()
+        pred_df[sub_col[1]] = prob_final_result
+        pred_df.to_csv(f'{save_path}/{self.clf_name}_prob_result.csv',index=False)
         return best_model
 
     def _get_clf(self):

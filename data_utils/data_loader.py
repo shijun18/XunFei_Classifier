@@ -3,7 +3,7 @@ sys.path.append('..')
 from PIL import Image
 from torch.utils.data import Dataset
 import torch
-
+import random
 
 class DataGenerator(Dataset):
   '''
@@ -15,36 +15,35 @@ class DataGenerator(Dataset):
   '''
   def __init__(self, path_list, label_dict=None, channels=1, transform=None):
 
-    self.path_list = path_list
-    self.label_dict = label_dict
-    self.transform = transform
-    self.channels = channels
+      self.path_list = path_list
+      self.label_dict = label_dict
+      self.transform = transform
+      self.channels = channels
 
 
   def __len__(self):
-    return len(self.path_list)
+      return len(self.path_list)
 
 
   def __getitem__(self,index):
-    # Get image and label
-    # image: D,H,W
-    # label: integer, 0,1,..
-    if self.channels == 3:
-      image = Image.open(self.path_list[index]).convert('RGB')
-    else:
-      image = Image.open(self.path_list[index]).convert('L')
-      # image = Image.open(self.path_list[index]).convert('RGB').split()[1]
-    if self.transform is not None:
-      image = self.transform(image)
+      # Get image and label
+      # image: D,H,W
+      # label: integer, 0,1,..
+      if self.channels == 3:
+          image = Image.open(self.path_list[index]).convert('RGB')
+      else:
+          image = Image.open(self.path_list[index]).convert('L')
+      if self.transform is not None:
+          image = self.transform(image)
 
-    if self.label_dict is not None:
-      label = self.label_dict[self.path_list[index]]    
-      # Transform
-      sample = {'image':image, 'label':int(label)}
-    else:
-      sample = {'image':image}
-    
-    return sample
+      if self.label_dict is not None:
+          label = self.label_dict[self.path_list[index]]    
+          # Transform
+          sample = {'image':image, 'label':int(label)}
+      else:
+          sample = {'image':image}
+      
+      return sample
 
 
 
@@ -66,6 +65,8 @@ def split_image(image):
     return split_list
 
 class SplitDataGenerator(Dataset):
+
+
   '''
   Custom Dataset class for data loader.
   Args：
@@ -108,4 +109,50 @@ class SplitDataGenerator(Dataset):
       else:
           sample = {'image':image}
         
+      return sample
+
+
+class BalanceDataGenerator(Dataset):
+  '''
+  Custom Dataset class for data loader.
+  Args：
+  - path_list: list of file path
+  - label_dict: dict, file path as key, label as value
+  - transform: the data augmentation methods
+  '''
+  def __init__(self, path_list, label_dict=None, channels=1, transform=None,factor=0.5):
+
+      self.path_list = path_list
+      self.label_dict = label_dict
+      self.transform = transform
+      self.channels = channels
+      self.factor = factor
+      
+
+  def __len__(self):
+      assert isinstance(self.path_list[0],list)
+      assert len(self.path_list) == 2
+      return sum([len(case) for case in self.path_list])
+
+
+  def __getitem__(self,index):
+      # Get image and label
+      # image: D,H,W
+      # label: integer, 0,1,..
+      item_path = random.choice(self.path_list[int(random.random() < self.factor)])
+      if self.channels == 3:
+          image = Image.open(item_path).convert('RGB')
+      else:
+          image = Image.open(item_path).convert('L')
+          # image = Image.open(self.path_list[index]).convert('RGB').split()[1]
+      if self.transform is not None:
+          image = self.transform(image)
+
+      if self.label_dict is not None:
+          label = self.label_dict[item_path]    
+          # Transform
+          sample = {'image':image, 'label':int(label)}
+      else:
+          sample = {'image':image}
+      
       return sample

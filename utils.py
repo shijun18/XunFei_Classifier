@@ -24,6 +24,7 @@ def get_weight_list(ckpt_path,choice=None):
             weight_path.sort(key=lambda x:int(x.split('-')[0].split(':')[-1]))
             path_list.append(os.path.join(fold.path,weight_path[-1]))
             # print(os.path.join(fold.path,weight_path[-1]))
+    path_list.sort(key=lambda x:x.split('/')[-2])
     return path_list
 
 
@@ -42,7 +43,7 @@ def get_weight_path(ckpt_path):
 
 
 
-def remove_weight_path(ckpt_path,retain=3):
+def remove_weight_path(ckpt_path,retain=1):
 
     if os.path.isdir(ckpt_path):
         pth_list = os.listdir(ckpt_path)
@@ -52,7 +53,7 @@ def remove_weight_path(ckpt_path,retain=3):
                 os.remove(os.path.join(ckpt_path,pth_item))
 
 
-def dfs_remove_weight(ckpt_path,retain=3):
+def dfs_remove_weight(ckpt_path,retain=1):
     for sub_path in os.scandir(ckpt_path):
         if sub_path.is_dir():
             dfs_remove_weight(sub_path.path,retain=retain)
@@ -62,5 +63,5 @@ def dfs_remove_weight(ckpt_path,retain=3):
 
 if __name__ == "__main__":
 
-    ckpt_path = './ckpt/Farmer_Work'
+    ckpt_path = './ckpt/'
     dfs_remove_weight(ckpt_path)

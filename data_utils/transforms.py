@@ -58,4 +58,20 @@ class SquarePad(object):
 
         return new_img
 
+
+class Trimming(object):
+    
+    def __call__(self, image):
+        w,h = image.size
+        factor = random.choice(range(1,5))*0.1
+        if w >= 5*h:
+            crop = (factor*w,0,(0.2+factor)*w,h)
+        elif h >= 5*w:
+            crop = (0,factor*h,w,(0.2+factor)*h)
+        else:
+            crop = (0,0,w,h)
+        new_img = image.crop(crop)
+
+        return new_img
+
         

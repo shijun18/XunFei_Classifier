@@ -141,14 +141,22 @@ if __name__ == '__main__':
     # cal_mean_std(path_list)
     cal_mean_std_single(path_list)
     '''
-    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Bird_Voice/train_data'
-    save_path = './bird_voice_train_time.csv'
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Bird_Voice/train_data'
+    # save_path = './bird_voice_train_time.csv'
+    # voice_time(input_path,save_path)
+
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Bird_Voice/dev_data'
+    # save_path = './bird_voice_dev_time.csv'
+    # voice_time(input_path,save_path)
+
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Bird_Voice/test_data'
+    # save_path = './bird_voice_test_time.csv'
+    # voice_time(input_path,save_path)
+
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Covid19/audio/train/cough/'
+    save_path = './covid19_train_time.csv'
     voice_time(input_path,save_path)
 
-    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Bird_Voice/dev_data'
-    save_path = './bird_voice_dev_time.csv'
-    voice_time(input_path,save_path)
-
-    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Bird_Voice/test_data'
-    save_path = './bird_voice_test_time.csv'
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Covid19/audio/test'
+    save_path = './covid19_test_time.csv'
     voice_time(input_path,save_path)
