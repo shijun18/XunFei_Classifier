@@ -132,7 +132,7 @@ if __name__ == "__main__":
         for current_fold in range(1, FOLD_NUM+1):
             print("=== Training Fold ", current_fold, " ===")
             if INIT_TRAINER['pre_trained']:
-                INIT_TRAINER['weigth_path'] = WEIGHT_PATH_LIST[current_fold-1]
+                INIT_TRAINER['weight_path'] = WEIGHT_PATH_LIST[current_fold-1]
             
             classifier = My_Classifier(**INIT_TRAINER)
 

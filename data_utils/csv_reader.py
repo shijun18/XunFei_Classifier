@@ -51,7 +51,15 @@ if __name__ == '__main__':
     # csv_list = ['../converter/csv_file/farmer_work_lite.csv',
     #             '../converter/csv_file/farmer_work_pre_test_lite.csv','../converter/csv_file/farmer_work_post_test_lite.csv']
     # merge_csv = '../converter/csv_file/farmer_work_final_v3.csv'
-    csv_list = ['../converter/csv_file/photo_guide_merge.csv',
-                '../converter/csv_file/photo_guide_testB_fake.csv']
-    merge_csv = '../converter/csv_file/photo_guide_merge_fake.csv'
+
+    # csv_list = ['../converter/csv_file/farmer_work_lite.csv','../converter/csv_file/farmer_work_external_v3.csv',
+    #             '../converter/csv_file/farmer_work_pre_test_lite.csv','../converter/csv_file/farmer_work_post_test_lite.csv']
+    # merge_csv = '../converter/csv_file/farmer_work_final_tmp.csv'
+
+    # csv_list = ['../converter/csv_file/photo_guide_merge.csv',
+    #             '../converter/csv_file/photo_guide_testB_fake.csv']
+    # merge_csv = '../converter/csv_file/photo_guide_merge_fake.csv'
+
+    csv_list = ['../converter/csv_file/crop_growth_post.csv','../converter/csv_file/crop_growth_test_fake_label_v2.csv']
+    merge_csv = '../converter/csv_file/crop_growth_post_fake_v2.csv'
     csv_merge(csv_list,merge_csv,key_col='id',value_col='label')

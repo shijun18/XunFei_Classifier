@@ -664,7 +664,9 @@ class My_Classifier(object):
         elif optimizer == 'SGD':
             optimizer = torch.optim.SGD(
                 net.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
-
+        
+        elif optimizer == 'AdamW':
+            optimizer = torch.optim.AdamW(net.parameters(), lr=lr,weight_decay=weight_decay, amsgrad=False)
         return optimizer
 
     def _get_lr_scheduler(self, lr_scheduler, optimizer):

@@ -6,7 +6,7 @@ __all__ = ['resnet18','resnet34', 'resnet50','resnest18','resnest50','efficientn
 
 data_config = {
     'Adver_Material':'./converter/csv_file/adver_material.csv',
-    'Crop_Growth':'./converter/csv_file/crop_growth_post.csv',
+    'Crop_Growth':'./converter/csv_file/crop_growth_post_final.csv',
     'Photo_Guide':'./converter/csv_file/photo_guide_merge_fake.csv', #photo_guide_merge.csv
     'Leve_Disease':'./converter/csv_file/leve_disease.csv',#processed_leve_disease.csv
     'Temp_Freq':'./converter/csv_file/temp_freq.csv',
@@ -26,14 +26,14 @@ num_classes = {
     'Family_Env':6
 }
 
-TASK = 'Photo_Guide'
-NET_NAME = 'efficientnet-b5'
-VERSION = 'v6.0-pretrained-fake' #v6.0-pretrained-new
-DEVICE = '3'
+TASK = 'Family_Env'
+NET_NAME = 'efficientnet-b7'
+VERSION = 'v7.0-pretrained-new' #v6.0-pretrained-new
+DEVICE = '0,1,2,3'
 # Must be True when pre-training and inference
-PRE_TRAINED = True
+PRE_TRAINED = False
 # 1,2,3,4
-CURRENT_FOLD = 2
+CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))
 FOLD_NUM = 5
 TTA_TIMES = 5
@@ -80,7 +80,7 @@ STD = {
 
 MILESTONES = {
     'Adver_Material':[30,60,90],
-    'Crop_Growth':[30,60,90],
+    'Crop_Growth':[20,40,60],
     'Photo_Guide':[30,60,90],
     'Leve_Disease':[30,60,90],
     'Temp_Freq':[30,60,90],
@@ -91,7 +91,7 @@ MILESTONES = {
 
 EPOCH = {
     'Adver_Material':150,
-    'Crop_Growth':120,
+    'Crop_Growth':80,
     'Photo_Guide':120, #120
     'Leve_Disease':120,
     'Temp_Freq':120,
@@ -102,13 +102,13 @@ EPOCH = {
 
 TRANSFORM = {
     'Adver_Material':[2,6,7,8,9],#[6,7,8,2,9]
-    'Crop_Growth':[18,6,7,8,13,9,19],
-    'Photo_Guide':[18,2,6,9,19],#[18,2,6,9,19] v5.2 v6.0-pretrained v6.0-all-pre,v6.0-pre-new,v6.0-pre-fake
+    'Crop_Growth':[18,2,6,7,8,9,19],
+    'Photo_Guide':[18,2,6,9,19],#v5.2 v6.0-pretrained v6.0-all-pre,v6.0-pre-new,v6.0-pre-fake
     'Leve_Disease':[2,18,6,7,8,9,19], #[2,6,7,8,9,10,19] (6.2-pre) (7,8-p=1) / [2,18,6,7,8,9,19](6.0-pre-new)
     'Temp_Freq':[2,4,9,19], #[2,3,4,9,19](6.0-pre) [2,4,9,19](6.1-pre) 
     'Farmer_Work':[2,6,7,8,9,10,19], #v6.0-pre v6.0-crop-pre (7,8-p=1)
     'Covid19':[2,18,6,7,8,9,19],
-    'Family_Env':[20,2,4,7,8,9,19] #[2,4,9,19] v6.0-pre  [20,2,4,7,8,9,19] v6.0-pre-new 
+    'Family_Env':[20,2,3,7,8,9,19] #[[20,2,4,7,8,9,19] v6.0-pre-new [20,2,3,7,8,9,19] v7.0-pre-new
 }
 
 SHAPE = {
@@ -143,7 +143,7 @@ INIT_TRAINER = {
     'num_classes': NUM_CLASSES,
     'input_shape': SHAPE[TASK],
     'crop': 0,
-    'batch_size': 32,
+    'batch_size': 16,
     'num_workers': 2,
     'device': DEVICE,
     'pre_trained': PRE_TRAINED,
@@ -202,7 +202,7 @@ MONITOR = {
 SETUP_TRAINER = {
     'output_dir': './ckpt/{}/{}'.format(TASK,VERSION),
     'log_dir': './log/{}/{}'.format(TASK,VERSION),
-    'optimizer': 'Adam',
+    'optimizer': 'AdamW',
     'loss_fun': LOSS_FUN,
     'class_weight': CLASS_WEIGHT[TASK],
     'lr_scheduler': 'MultiStepLR', #'MultiStepLR'

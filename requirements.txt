@@ -1,0 +1,8 @@
+torch==1.8.0
+torchvision==0.9.0
+scikit-image==0.17.2
+pandas==1.0.3
+opencv-contrib-python==3.4.2.17
+Pillow==6.2.1
+efficientnet-pytorch==0.6.3
+scipy==1.4.1 
