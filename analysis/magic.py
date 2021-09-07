@@ -19,6 +19,20 @@ def run_ad():
     result_csv.to_csv('./fake_result.csv',index=False)
 
 def run_crop():
+    input_path = '../dataset/Crop_Growth/test-fake'
+    fake_result = {
+      'image_id':[],
+      'category_id':[]}
+    for subdir in os.scandir(input_path):
+        image_id = os.listdir(subdir.path)
+        image_id = [os.path.basename(case) for case in image_id]
+        fake_result['image_id'].extend(image_id)
+        fake_result['category_id'].extend([subdir.name]*len(image_id))
+      
+    result_csv = pd.DataFrame(data=fake_result)
+    result_csv.to_csv('./crop_fake_result.csv',index=False)
+'''
+def run_crop():
     input_csv = 'C:\\Users\\Joker\\Desktop\\比赛\\数据\\农作物\\v6.0-pretrained-fake-v3\\submission_ave.csv'
     df = pd.read_csv(input_csv)
     result = df['category_id'].values.tolist()
@@ -36,7 +50,7 @@ def run_crop():
             post_result.append(sort_prob[-2])
     df['post'] = post_result
     df.to_csv(os.path.join(os.path.dirname(input_csv),'post_result.csv'),index=False)
-
+'''
 if __name__ == '__main__':
     # run_ad()
     run_crop()

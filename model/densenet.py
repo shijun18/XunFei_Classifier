@@ -16,10 +16,10 @@ except ImportError:
 __all__ = ['DenseNet', 'densenet121', 'densenet169', 'densenet201', 'densenet161']
 
 model_urls = {
-    'densenet121': None,
-    'densenet169': None,
-    'densenet201': None,
-    'densenet161': None,
+    'densenet121': 'https://download.pytorch.org/models/densenet121-a639ec97.pth',
+    'densenet169': 'https://download.pytorch.org/models/densenet169-b2777c0a.pth',
+    'densenet201': 'https://download.pytorch.org/models/densenet201-c1103571.pth',
+    'densenet161': 'https://download.pytorch.org/models/densenet161-8d451a50.pth',
 }
 
 
@@ -177,9 +177,10 @@ class DenseNet(nn.Module):
 
         # Final batch norm
         self.features.add_module('norm5', nn.BatchNorm2d(num_features))
-
+        self.final_num_features = num_features
         # Linear layer
-        self.classifier = nn.Linear(num_features, num_classes)
+        # self.classifier = nn.Linear(num_features, num_classes)
+        self.classifier = nn.Linear(num_features, 1000)
 
         # Official init from torch repo.
         for m in self.modules():
@@ -223,6 +224,7 @@ def _densenet(arch, growth_rate, block_config, num_init_features, pretrained, pr
     model = DenseNet(growth_rate, block_config, num_init_features, **kwargs)
     if pretrained:
         _load_state_dict(model, model_urls[arch], progress)
+    model.classifier = nn.Linear(model.final_num_features, kwargs['num_classes'])
     return model
 
 

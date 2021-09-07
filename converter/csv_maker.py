@@ -54,8 +54,8 @@ if __name__ == "__main__":
     # csv_path = './csv_file/temp_freq.csv'
     # make_label_csv(input_path,csv_path)
 
-    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Farmer_Work/post-test-lite'
-    csv_path = './csv_file/farmer_work_post_test_lite.csv'
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Crop_Growth/test-fake'
+    csv_path = './csv_file/crop_growth_test_fake.csv'
     make_label_csv(input_path,csv_path)
 
     

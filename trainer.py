@@ -10,7 +10,7 @@ import numpy as np
 import math
 
 from torch.nn import functional as F
-
+from torch.autograd import Variable
 import torchvision.transforms as tr
 from data_utils.data_loader import DataGenerator as DataGenerator
 # from data_utils.data_loader import SplitDataGenerator as DataGenerator
@@ -23,7 +23,7 @@ from torch.cuda.amp import GradScaler
 from data_utils.transforms import RandomRotate,DeNoise,SquarePad,AddNoise,Trimming
 
 from sklearn import metrics
-
+import random
 # GPU version.
 
 
@@ -48,7 +48,7 @@ class My_Classifier(object):
     def __init__(self, net_name=None, gamma=0.1, lr=1e-3, n_epoch=1, channels=1, num_classes=3, input_shape=None, crop=48,
                  batch_size=6, num_workers=0, device=None, pre_trained=False, weight_path=None, weight_decay=0.,
                  momentum=0.95, mean=(0.105393,), std=(0.203002,), milestones=None,use_fp16=False,transform=None,
-                 drop_rate=0.0,smothing=0.1,external_pretrained=False):
+                 drop_rate=0.0,smothing=0.1,external_pretrained=False,use_mixup=False,use_cutmix=False,mix_only=False):
         super(My_Classifier, self).__init__()
 
         self.net_name = net_name
@@ -81,6 +81,9 @@ class My_Classifier(object):
         self.drop_rate = drop_rate
         self.smothing = smothing
         self.external_pretrained = external_pretrained
+        self.use_mixup = use_mixup
+        self.use_cutmix = use_cutmix
+        self.mix_only = mix_only
 
         os.environ['CUDA_VISIBLE_DEVICES'] = self.device
         self.net = self._get_net(self.net_name)
@@ -96,10 +99,10 @@ class My_Classifier(object):
             DeNoise(3), #1
             tr.Resize(size=self.input_shape), #2
             tr.RandomAffine(0,(0.1,0.1),(0.8,1.2)), #3
-            tr.ColorJitter(brightness=.5, hue=.3, contrast=.5), #4
+            tr.ColorJitter(brightness=.3,contrast=.3), #4
             tr.RandomPerspective(distortion_scale=0.6, p=0.5), #5
-            # RandomRotate([-15, -10, -5, 0, 5, 10, 15]), #6
-            tr.RandomRotation((-15,+15)), #6
+            RandomRotate([-30, -60, -90, 0, 90, 60, 30]), #6
+            # tr.RandomRotation((-15,+15)), #6
             tr.RandomHorizontalFlip(p=0.5), #7
             tr.RandomVerticalFlip(p=0.5), #8
             tr.ToTensor(), #9
@@ -278,13 +281,32 @@ class My_Classifier(object):
 
             data = sample['image']
             target = sample['label']
-
             
             data = data.cuda()
             target = target.cuda()
+            ######## use mixup or cutmix
+            prob = random.random()
+            mix_p = 0.5 if not self.mix_only else 0.0
+            if prob > mix_p:
+                if self.use_mixup and self.use_cutmix:
+                    if prob > mix_p and prob <= (1.0-(1.0-mix_p)/2):
+                        data, target_a, target_b, lam = mixup_data(data, target, 1.0)
+                    elif prob > (1.0-(1.0-mix_p)/2):
+                        data, target_a, target_b, lam = cutmix_data(data, target, 1.0)
+                    data, target_a, target_b = map(Variable, (data, target_a, target_b))
+                elif not self.use_mixup and self.use_cutmix:
+                    data, target_a, target_b, lam = cutmix_data(data, target, 1.0)
+                    data, target_a, target_b = map(Variable, (data, target_a, target_b))
+                elif not self.use_cutmix and self.use_mixup:
+                    data, target_a, target_b, lam = mixup_data(data, target, 1.0)
+                    data, target_a, target_b = map(Variable, (data, target_a, target_b))
+            ########
             with autocast(self.use_fp16):
                 output = net(data)
-                loss = criterion(output, target)
+                if (self.use_mixup or self.use_cutmix) and prob > mix_p :
+                    loss = mixup_criterion(criterion, output, target_a, target_b, lam)
+                else: 
+                    loss = criterion(output, target)
             
             optimizer.zero_grad()
             if self.use_fp16:
@@ -562,14 +584,10 @@ class My_Classifier(object):
             from model.simple_net import simple_net
             net = simple_net(input_channels=self.channels,
                              num_classes=self.num_classes,final_drop=self.drop_rate)
-        elif net_name == 'densenet121':
-            from model.densenet import densenet121
-            net = densenet121(input_channels=self.channels,
-                              num_classes=self.num_classes,drop_rate=self.drop_rate)
-        elif net_name == 'densenet169':
-            from model.densenet import densenet169
-            net = densenet169(input_channels=self.channels,
-                              num_classes=self.num_classes,drop_rate=self.drop_rate)
+        elif net_name.startswith('densenet'):
+            import model.densenet as densenet
+            net = densenet.__dict__[net_name](pretrained=self.external_pretrained,input_channels=self.channels,
+                                            num_classes=self.num_classes,drop_rate=self.drop_rate)
         elif net_name.startswith('vgg'):
             import model.vgg as vgg
             net = vgg.__dict__[net_name](pretrained=self.external_pretrained,input_channels=self.channels,num_classes=self.num_classes)
@@ -791,3 +809,48 @@ class EarlyStopping(object):
         if self.verbose:
            print(self.monitor, f'optimized ({self.val_score_min:.6f} --> {val_score:.6f}).  Saving model ...')
         self.val_score_min = val_score
+
+
+def mixup_data(x, y, alpha=1.0):
+    '''Returns mixed inputs, pairs of targets, and lambda'''
+    lam = np.random.beta(alpha, alpha)
+    batch_size = x.size()[0]
+    index = torch.randperm(batch_size).cuda()
+    mixed_x = lam * x + (1 - lam) * x[index, :]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam
+
+
+def mixup_criterion(criterion, pred, y_a, y_b, lam):
+    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
+
+def cutmix_data(x, y, alpha=1.0):
+    lam = np.random.beta(alpha, alpha)
+    rand_index = torch.randperm(x.size()[0]).cuda()
+    target_a = y
+    target_b = y[rand_index]
+    bbx1, bby1, bbx2, bby2 = rand_bbox(x.size(), lam)
+    x[:, :, bbx1:bbx2, bby1:bby2] = x[rand_index, :, bbx1:bbx2, bby1:bby2]
+    # adjust lambda to exactly match pixel ratio
+    lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (x.size()[-1] * x.size()[-2]))
+
+    return x,target_a,target_b,lam
+
+
+def rand_bbox(size, lam):
+    W = size[2]
+    H = size[3]
+    cut_rat = np.sqrt(1. - lam)
+    cut_w = np.int(W * cut_rat)
+    cut_h = np.int(H * cut_rat)
+
+    # uniform
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
+
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bby1 = np.clip(cy - cut_h // 2, 0, H)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
+    bby2 = np.clip(cy + cut_h // 2, 0, H)
+
+    return bbx1, bby1, bbx2, bby2

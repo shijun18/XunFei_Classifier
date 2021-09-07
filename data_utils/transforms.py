@@ -27,15 +27,19 @@ class DeNoise(object):
 
 
 class AddNoise(object):
-
+    def __init__(self,p=0.5):
+        self.p = p
     def __call__(self, image):
-        if image.mode == 'RGB':
-            image = random_noise(np.array(image)[...,0],mode='s&p') 
-            image = Image.fromarray((image*255).astype(np.uint8)).convert('RGB')
+        if random.random() > self.p:
+            if image.mode == 'RGB':
+                image = random_noise(np.array(image)[...,0],mode='s&p') 
+                image = Image.fromarray((image*255).astype(np.uint8)).convert('RGB')
+            else:
+                image = random_noise(np.array(image),mode='s&p') 
+                image = Image.fromarray((image*255).astype(np.uint8)).convert('L')
+            return image
         else:
-            image = random_noise(np.array(image),mode='s&p') 
-            image = Image.fromarray((image*255).astype(np.uint8)).convert('L')
-        return image
+            return image
 
 
 class SquarePad(object):

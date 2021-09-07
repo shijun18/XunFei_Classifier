@@ -1,12 +1,12 @@
  
 __all__ = ['resnet18','resnet34', 'resnet50','resnest18','resnest50','efficientnet-b5'\
-            'efficientnet-b7','efficientnet-b3','bilinearnet_b5','finenet50','directnet50','densenet121','densenet169','simple_net','vgg16','res2net50','res2net18','res2next50', \
-            'res2next18','se_resnet18', 'se_resnet10', ]
+            'efficientnet-b7','efficientnet-b3','efficientnet-b0','densenet121','densenet169','simple_net','vgg16','res2net50','res2net18','res2next50', \
+            'res2next18','se_resnet18', 'se_resnet10','bilinearnet_b5','finenet50','directnet50', ]
 
 
 data_config = {
     'Adver_Material':'./converter/csv_file/adver_material.csv',
-    'Crop_Growth':'./converter/csv_file/crop_growth_post_final.csv',
+    'Crop_Growth':'./converter/csv_file/crop_growth_post_mod.csv',
     'Photo_Guide':'./converter/csv_file/photo_guide_merge_fake.csv', #photo_guide_merge.csv
     'Leve_Disease':'./converter/csv_file/leve_disease.csv',#processed_leve_disease.csv
     'Temp_Freq':'./converter/csv_file/temp_freq.csv',
@@ -26,10 +26,10 @@ num_classes = {
     'Family_Env':6
 }
 
-TASK = 'Family_Env'
-NET_NAME = 'efficientnet-b7'
-VERSION = 'v7.0-pretrained-new' #v6.0-pretrained-new
-DEVICE = '0,1,2,3'
+TASK = 'Crop_Growth'
+NET_NAME = 'densenet169'
+VERSION = 'v11.0-pretrained-mod' 
+DEVICE = '6,7'
 # Must be True when pre-training and inference
 PRE_TRAINED = False
 # 1,2,3,4
@@ -102,18 +102,18 @@ EPOCH = {
 
 TRANSFORM = {
     'Adver_Material':[2,6,7,8,9],#[6,7,8,2,9]
-    'Crop_Growth':[18,2,6,7,8,9,19],
+    'Crop_Growth':[18,2,4,6,7,8,9,19],
     'Photo_Guide':[18,2,6,9,19],#v5.2 v6.0-pretrained v6.0-all-pre,v6.0-pre-new,v6.0-pre-fake
     'Leve_Disease':[2,18,6,7,8,9,19], #[2,6,7,8,9,10,19] (6.2-pre) (7,8-p=1) / [2,18,6,7,8,9,19](6.0-pre-new)
     'Temp_Freq':[2,4,9,19], #[2,3,4,9,19](6.0-pre) [2,4,9,19](6.1-pre) 
     'Farmer_Work':[2,6,7,8,9,10,19], #v6.0-pre v6.0-crop-pre (7,8-p=1)
     'Covid19':[2,18,6,7,8,9,19],
-    'Family_Env':[20,2,3,7,8,9,19] #[[20,2,4,7,8,9,19] v6.0-pre-new [20,2,3,7,8,9,19] v7.0-pre-new
+    'Family_Env':[20,2,4,7,8,9,19] #[[20,2,4,7,8,9,19] v6.0-pre-new v3.0-pre v8.0-pre/[20,2,3,7,8,9,19] v7.0-pre-new
 }
 
 SHAPE = {
     'Adver_Material':(512, 512),
-    'Crop_Growth':(256, 256),
+    'Crop_Growth':(512, 512),
     'Photo_Guide':(256, 256),
     'Leve_Disease':(512, 512),
     'Temp_Freq':(512,512),
@@ -143,7 +143,7 @@ INIT_TRAINER = {
     'num_classes': NUM_CLASSES,
     'input_shape': SHAPE[TASK],
     'crop': 0,
-    'batch_size': 16,
+    'batch_size': 32,
     'num_workers': 2,
     'device': DEVICE,
     'pre_trained': PRE_TRAINED,
@@ -159,6 +159,9 @@ INIT_TRAINER = {
     'drop_rate': 0.5, #0.5
     'smothing':0.15,
     'external_pretrained':True if 'pretrained' in VERSION else False,#False
+    'use_mixup':True if 'mixup' in VERSION else False,
+    'use_cutmix':True if 'cutmix' in VERSION else False,
+    'mix_only': True if 'only' in VERSION else False
 }
 
 # no_crop     
@@ -202,7 +205,7 @@ MONITOR = {
 SETUP_TRAINER = {
     'output_dir': './ckpt/{}/{}'.format(TASK,VERSION),
     'log_dir': './log/{}/{}'.format(TASK,VERSION),
-    'optimizer': 'AdamW',
+    'optimizer': 'Adam',
     'loss_fun': LOSS_FUN,
     'class_weight': CLASS_WEIGHT[TASK],
     'lr_scheduler': 'MultiStepLR', #'MultiStepLR'

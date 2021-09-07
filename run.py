@@ -95,7 +95,7 @@ def get_parameter_number(net):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--mode', default='train-cross', choices=["train-cross", "inf-cross", "train", "inf"],
+    parser.add_argument('-m', '--mode', default='train-cross', choices=["train-cross", "inf-cross", "train", "inf","train-val"],
                         help='choose the mode', type=str)
     parser.add_argument('-s', '--save', default='no', choices=['no', 'n', 'yes', 'y'],
                         help='save the forward middle features or not', type=str)
@@ -175,6 +175,28 @@ if __name__ == "__main__":
                 path_list, FOLD_NUM, CURRENT_FOLD)
         SETUP_TRAINER['train_path'] = train_path
         SETUP_TRAINER['val_path'] = val_path
+        SETUP_TRAINER['label_dict'] = label_dict
+        SETUP_TRAINER['cur_fold'] = CURRENT_FOLD
+
+        start_time = time.time()
+        classifier.trainer(**SETUP_TRAINER)
+
+        print('run time:%.4f' % (time.time()-start_time))
+    
+    elif args.mode == 'train-val':
+        
+        if TASK == 'Crop_Growth':
+            val_csv_path = './converter/csv_file/crop_growth_test_fake.csv'
+        elif TASK == 'Family_Env':
+            val_csv_path = './converter/csv_file/family_env_test_result.csv'
+        val_label_dict = csv_reader_single(val_csv_path, key_col='id', value_col='label')
+        label_dict.update(val_label_dict)
+
+        print("train dataset length is %d"%len(path_list))
+        print("val dataset length is %d"%len(list(val_label_dict.keys())))
+
+        SETUP_TRAINER['train_path'] = path_list
+        SETUP_TRAINER['val_path'] = list(val_label_dict.keys())
         SETUP_TRAINER['label_dict'] = label_dict
         SETUP_TRAINER['cur_fold'] = CURRENT_FOLD
 
