@@ -134,11 +134,11 @@ if __name__ == '__main__':
     # cal_mean_std(input_path)
 
     
-    # input_csv = './csv_file/farmer_work_lite_external_v3.csv'
-    # path_list = pd.read_csv(input_csv)['id'].values.tolist()
-    # test_path = '../dataset/Farmer_Work/test/'
-    # path_list += [os.path.join(test_path,case) for case in os.listdir(test_path)]
-    # # cal_mean_std(path_list)
+    input_csv = './csv_file/crop_growth_post_mod.csv'
+    path_list = pd.read_csv(input_csv)['id'].values.tolist()
+    test_path = '../dataset/Crop_Growth/post_test/'
+    path_list += [os.path.join(test_path,case) for case in os.listdir(test_path)]
+    cal_mean_std(path_list)
     # cal_mean_std_single(path_list)
     
     # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Bird_Voice/train_data'
@@ -160,8 +160,3 @@ if __name__ == '__main__':
     # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Covid19/audio/test'
     # save_path = './covid19_test_time.csv'
     # voice_time(input_path,save_path)
-
-    import glob
-    input_path = '/staff/yihuite/xunfei/suimi2/suimi_data/images'
-    path_list = glob.glob(os.path.join(input_path,'*.png'))
-    cal_mean_std(path_list,shape=(2048,1024))

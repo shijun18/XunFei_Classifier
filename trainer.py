@@ -101,7 +101,7 @@ class My_Classifier(object):
             tr.RandomAffine(0,(0.1,0.1),(0.8,1.2)), #3
             tr.ColorJitter(brightness=.3,contrast=.3), #4
             tr.RandomPerspective(distortion_scale=0.6, p=0.5), #5
-            RandomRotate([-30, -60, -90, 0, 90, 60, 30]), #6
+            RandomRotate([-30, -45, -90, 0, 90, 45, 30]), #6 45/60  
             # tr.RandomRotation((-15,+15)), #6
             tr.RandomHorizontalFlip(p=0.5), #7
             tr.RandomVerticalFlip(p=0.5), #8
@@ -122,7 +122,7 @@ class My_Classifier(object):
         self.transform = [self.transform_list[i-1] for i in transform]
 
     def trainer(self, train_path, val_path, label_dict, cur_fold, output_dir=None, log_dir=None, optimizer='Adam',
-                loss_fun='Cross_Entropy', class_weight=None, lr_scheduler=None,balance_sample=False,monitor='val_acc'):
+                loss_fun='Cross_Entropy', class_weight=None, lr_scheduler=None,balance_sample=False,monitor='val_acc',repeat_factor=1.0):
 
         torch.manual_seed(1)
         print('Device:{}'.format(self.device))
@@ -168,7 +168,7 @@ class My_Classifier(object):
                 train_path, label_dict, channels=self.channels, transform=train_transformer)
         else:
             train_dataset = DataGenerator(
-                train_path, label_dict, channels=self.channels, transform=train_transformer)
+                train_path, label_dict, channels=self.channels, transform=train_transformer,repeat_factor=repeat_factor)
 
         train_loader = DataLoader(
             train_dataset,
@@ -346,7 +346,11 @@ class My_Classifier(object):
 
         net.eval()
 
-        val_transformer = transforms.Compose(self.transform)
+        # transform = [self.transform_list[i-1] for i in [2,9,10,19]]
+        transform = [self.transform_list[i-1] for i in [18,2,4,9,19]]
+        val_transformer = transforms.Compose(transform)
+        
+        # val_transformer = transforms.Compose(self.transform)
 
         val_dataset = DataGenerator(
             val_path, label_dict, channels=self.channels, transform=val_transformer)

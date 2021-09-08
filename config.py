@@ -1,7 +1,10 @@
  
 __all__ = ['resnet18','resnet34', 'resnet50','resnest18','resnest50','efficientnet-b5'\
-            'efficientnet-b7','efficientnet-b3','efficientnet-b0','densenet121','densenet169','simple_net','vgg16','res2net50','res2net18','res2next50', \
+            'efficientnet-b7','efficientnet-b3','efficientnet-b0','densenet121','densenet169','resnext101_32x8d','vgg16','res2net50','res2net18','res2next50', 'simple_net',\
             'res2next18','se_resnet18', 'se_resnet10','bilinearnet_b5','finenet50','directnet50', ]
+
+
+from re import T
 
 
 data_config = {
@@ -27,16 +30,16 @@ num_classes = {
 }
 
 TASK = 'Crop_Growth'
-NET_NAME = 'densenet169'
-VERSION = 'v11.0-pretrained-mod' 
-DEVICE = '6,7'
+NET_NAME = 'efficientnet-b5'
+VERSION = 'v6.0-pretrained-mod-val' 
+DEVICE = '5,6'
 # Must be True when pre-training and inference
 PRE_TRAINED = False
 # 1,2,3,4
 CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))
 FOLD_NUM = 5
-TTA_TIMES = 5
+TTA_TIMES = 1
 
 
 NUM_CLASSES = num_classes[TASK]
@@ -57,7 +60,7 @@ else:
 
 MEAN = {
     'Adver_Material':[0.485, 0.456, 0.406], 
-    'Crop_Growth':None,
+    'Crop_Growth':(0.469,0.560,0.349),
     'Photo_Guide':(0.450),
     'Leve_Disease':(0.496,0.527,0.387),
     'Temp_Freq':None,
@@ -68,7 +71,7 @@ MEAN = {
 
 STD = {
     'Adver_Material':[0.229, 0.224, 0.225],
-    'Crop_Growth':None,
+    'Crop_Growth':(0.281,0.295,0.281),
     'Photo_Guide':(0.224),
     'Leve_Disease':(0.230,0.216,0.237),
     'Temp_Freq':None,
@@ -80,7 +83,7 @@ STD = {
 
 MILESTONES = {
     'Adver_Material':[30,60,90],
-    'Crop_Growth':[20,40,60],
+    'Crop_Growth':[30,60,90],
     'Photo_Guide':[30,60,90],
     'Leve_Disease':[30,60,90],
     'Temp_Freq':[30,60,90],
@@ -91,7 +94,7 @@ MILESTONES = {
 
 EPOCH = {
     'Adver_Material':150,
-    'Crop_Growth':80,
+    'Crop_Growth':120,
     'Photo_Guide':120, #120
     'Leve_Disease':120,
     'Temp_Freq':120,
@@ -102,7 +105,7 @@ EPOCH = {
 
 TRANSFORM = {
     'Adver_Material':[2,6,7,8,9],#[6,7,8,2,9]
-    'Crop_Growth':[18,2,4,6,7,8,9,19],
+    'Crop_Growth':[18,2,4,6,7,8,9,19] if not PRE_TRAINED else [18,2,4,9,19], # [18,2,4,6,7,8,9,19] [18,2,4,9,19] / [2,3,4,5,6,7,8,9,10,19] new
     'Photo_Guide':[18,2,6,9,19],#v5.2 v6.0-pretrained v6.0-all-pre,v6.0-pre-new,v6.0-pre-fake
     'Leve_Disease':[2,18,6,7,8,9,19], #[2,6,7,8,9,10,19] (6.2-pre) (7,8-p=1) / [2,18,6,7,8,9,19](6.0-pre-new)
     'Temp_Freq':[2,4,9,19], #[2,3,4,9,19](6.0-pre) [2,4,9,19](6.1-pre) 
@@ -143,7 +146,7 @@ INIT_TRAINER = {
     'num_classes': NUM_CLASSES,
     'input_shape': SHAPE[TASK],
     'crop': 0,
-    'batch_size': 32,
+    'batch_size': 24,
     'num_workers': 2,
     'device': DEVICE,
     'pre_trained': PRE_TRAINED,
@@ -154,7 +157,7 @@ INIT_TRAINER = {
     'std': STD[TASK],
     'gamma': 0.1,
     'milestones': MILESTONES[TASK],
-    'use_fp16':True,
+    'use_fp16':False,
     'transform':TRANSFORM[TASK],
     'drop_rate': 0.5, #0.5
     'smothing':0.15,
@@ -205,10 +208,11 @@ MONITOR = {
 SETUP_TRAINER = {
     'output_dir': './ckpt/{}/{}'.format(TASK,VERSION),
     'log_dir': './log/{}/{}'.format(TASK,VERSION),
-    'optimizer': 'Adam',
+    'optimizer': 'Adam', 
     'loss_fun': LOSS_FUN,
     'class_weight': CLASS_WEIGHT[TASK],
     'lr_scheduler': 'MultiStepLR', #'MultiStepLR'
     'balance_sample':True if 'balance' in VERSION else False,#False
-    'monitor':MONITOR[TASK]
+    'monitor':MONITOR[TASK],
+    'repeat_factor':2.0
 }

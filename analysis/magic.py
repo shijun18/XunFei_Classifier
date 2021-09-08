@@ -30,7 +30,7 @@ def run_crop():
         fake_result['category_id'].extend([subdir.name]*len(image_id))
       
     result_csv = pd.DataFrame(data=fake_result)
-    result_csv.to_csv('./crop_fake_result.csv',index=False)
+    result_csv.to_csv('./crop_growth_fake_result.csv',index=False)
 '''
 def run_crop():
     input_csv = 'C:\\Users\\Joker\\Desktop\\比赛\\数据\\农作物\\v6.0-pretrained-fake-v3\\submission_ave.csv'
