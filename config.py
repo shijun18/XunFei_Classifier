@@ -1,6 +1,6 @@
  
 __all__ = ['resnet18','resnet34', 'resnet50','resnest18','resnest50','efficientnet-b5'\
-            'efficientnet-b7','efficientnet-b3','efficientnet-b0','densenet121','densenet169','resnext101_32x8d','vgg16','res2net50','res2net18','res2next50', 'simple_net',\
+            'efficientnet-b7','efficientnet-b3','efficientnet-b8','densenet121','densenet169','regnetx-600MF','regnety-16GF','vgg16','res2net50','res2net18','res2next50', 'simple_net',\
             'res2next18','se_resnet18', 'se_resnet10','bilinearnet_b5','finenet50','directnet50', ]
 
 
@@ -16,6 +16,7 @@ data_config = {
     'Farmer_Work':'./converter/csv_file/farmer_work_final_v3.csv', #farmer_work_lite_external_v3.csv
     'Covid19':'./converter/csv_file/covid19.csv',
     'Family_Env':'./converter/csv_file/family_env.csv',
+    'Plastic_Drum':'./converter/csv_file/plastic_drum.csv'
 }
 
 num_classes = {
@@ -26,17 +27,18 @@ num_classes = {
     'Temp_Freq':24,
     'Farmer_Work':4,
     'Covid19':2,
-    'Family_Env':6
+    'Family_Env':6,
+    'Plastic_Drum':2
 }
 
 TASK = 'Crop_Growth'
 NET_NAME = 'efficientnet-b5'
-VERSION = 'v6.0-pretrained-mod-val' 
-DEVICE = '5,6'
+VERSION = 'v6.0-pretrained-mod' 
+DEVICE = '4'
 # Must be True when pre-training and inference
-PRE_TRAINED = False
+PRE_TRAINED = True
 # 1,2,3,4
-CURRENT_FOLD = 1
+CURRENT_FOLD = 5
 GPU_NUM = len(DEVICE.split(','))
 FOLD_NUM = 5
 TTA_TIMES = 1
@@ -52,7 +54,7 @@ WEIGHT_PATH = get_weight_path(CKPT_PATH)
 print(WEIGHT_PATH)
 
 if PRE_TRAINED:
-    WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION))
+    WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION),[1,2,5])
 else:
     WEIGHT_PATH_LIST = None
 
@@ -105,7 +107,7 @@ EPOCH = {
 
 TRANSFORM = {
     'Adver_Material':[2,6,7,8,9],#[6,7,8,2,9]
-    'Crop_Growth':[18,2,4,6,7,8,9,19] if not PRE_TRAINED else [18,2,4,9,19], # [18,2,4,6,7,8,9,19] [18,2,4,9,19] / [2,3,4,5,6,7,8,9,10,19] new
+    'Crop_Growth':[18,2,4,6,7,8,9,19], # [18,2,4,6,7,8,9,19] / [18,2,3,4,5,6,7,8,9,19] new
     'Photo_Guide':[18,2,6,9,19],#v5.2 v6.0-pretrained v6.0-all-pre,v6.0-pre-new,v6.0-pre-fake
     'Leve_Disease':[2,18,6,7,8,9,19], #[2,6,7,8,9,10,19] (6.2-pre) (7,8-p=1) / [2,18,6,7,8,9,19](6.0-pre-new)
     'Temp_Freq':[2,4,9,19], #[2,3,4,9,19](6.0-pre) [2,4,9,19](6.1-pre) 
@@ -146,7 +148,7 @@ INIT_TRAINER = {
     'num_classes': NUM_CLASSES,
     'input_shape': SHAPE[TASK],
     'crop': 0,
-    'batch_size': 24,
+    'batch_size': 32,
     'num_workers': 2,
     'device': DEVICE,
     'pre_trained': PRE_TRAINED,
@@ -157,7 +159,7 @@ INIT_TRAINER = {
     'std': STD[TASK],
     'gamma': 0.1,
     'milestones': MILESTONES[TASK],
-    'use_fp16':False,
+    'use_fp16':True,
     'transform':TRANSFORM[TASK],
     'drop_rate': 0.5, #0.5
     'smothing':0.15,
@@ -214,5 +216,5 @@ SETUP_TRAINER = {
     'lr_scheduler': 'MultiStepLR', #'MultiStepLR'
     'balance_sample':True if 'balance' in VERSION else False,#False
     'monitor':MONITOR[TASK],
-    'repeat_factor':2.0
+    'repeat_factor':1.0
 }

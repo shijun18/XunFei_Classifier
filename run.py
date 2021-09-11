@@ -95,7 +95,7 @@ def get_parameter_number(net):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--mode', default='train-cross', choices=["train-cross", "inf-cross", "train", "inf","train-val"],
+    parser.add_argument('-m', '--mode', default='train-cross', choices=["train-cross", "inf-cross", "train","train-val-cross", "inf","train-val"],
                         help='choose the mode', type=str)
     parser.add_argument('-s', '--save', default='no', choices=['no', 'n', 'yes', 'y'],
                         help='save the forward middle features or not', type=str)
@@ -205,6 +205,41 @@ if __name__ == "__main__":
 
         print('run time:%.4f' % (time.time()-start_time))
     ###############################################
+    if args.mode == 'train-val-cross':
+        print("dataset length is %d"%len(path_list))
+        if TASK == 'Crop_Growth':
+            val_csv_path = './converter/csv_file/crop_growth_test_fake.csv'
+        elif TASK == 'Family_Env':
+            val_csv_path = './converter/csv_file/family_env_test_result.csv'
+        val_label_dict = csv_reader_single(val_csv_path, key_col='id', value_col='label')
+        label_dict.update(val_label_dict)
+
+        for current_fold in range(1, FOLD_NUM+1):
+            print("=== Training Fold ", current_fold, " ===")
+            if INIT_TRAINER['pre_trained']:
+                INIT_TRAINER['weight_path'] = WEIGHT_PATH_LIST[current_fold-1]
+            
+            classifier = My_Classifier(**INIT_TRAINER)
+
+            if current_fold == 0:
+                print(get_parameter_number(classifier.net))
+
+            if 'balance' in VERSION:
+                train_path, val_path = get_cross_validation_balance(
+                    path_list, FOLD_NUM, current_fold)    
+            else:
+                train_path, val_path = get_cross_validation(
+                    path_list, FOLD_NUM, current_fold)
+
+            SETUP_TRAINER['train_path'] = train_path
+            SETUP_TRAINER['val_path'] = list(val_label_dict.keys())
+            SETUP_TRAINER['label_dict'] = label_dict
+            SETUP_TRAINER['cur_fold'] = current_fold
+
+            start_time = time.time()
+            val_loss, val_acc = classifier.trainer(**SETUP_TRAINER)
+
+            print('run time:%.4f' % (time.time()-start_time))
 
     # Inference
     ###############################################

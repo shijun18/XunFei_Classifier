@@ -1,5 +1,6 @@
-from enum import auto
+import sys
 import os,shutil
+from tqdm import tqdm
 import torch
 import torch.nn as nn
 from torch.nn import DataParallel
@@ -345,12 +346,8 @@ class My_Classifier(object):
     def _val_on_epoch(self, epoch, net, criterion, val_path, label_dict):
 
         net.eval()
-
-        # transform = [self.transform_list[i-1] for i in [2,9,10,19]]
-        transform = [self.transform_list[i-1] for i in [18,2,4,9,19]]
-        val_transformer = transforms.Compose(transform)
         
-        # val_transformer = transforms.Compose(self.transform)
+        val_transformer = transforms.Compose(self.transform)
 
         val_dataset = DataGenerator(
             val_path, label_dict, channels=self.channels, transform=val_transformer)
@@ -511,36 +508,32 @@ class My_Classifier(object):
 
         if net is None:
             net = self.net
-
         net = net.cuda()
         net.eval()
 
         test_transformer = transforms.Compose(self.transform)
-        test_dataset = DataGenerator(test_path, channels=self.channels, transform=None)
 
         prob_output = []
         vote_output = []
-
         with torch.no_grad():
-            for _, sample in enumerate(test_dataset):
-                data = sample['image']
+            for item in tqdm(test_path):
+                if self.channels == 1:
+                    data = Image.open(item).convert('L')
+                elif self.channels == 3:
+                    data = Image.open(item).convert('RGB')
 
                 tta_output = []
                 binary_output = []
 
                 for _ in range(tta_times):
-                    if self.channels == 1:
-                        img = Image.fromarray(np.copy(data)).convert('L')
-                    elif self.channels == 3:
-                        img = Image.fromarray(np.copy(data)).convert('RGB')
-                    img_tensor = test_transformer(img)
+                    img_tensor = test_transformer(data)
                     img_tensor = torch.unsqueeze(img_tensor, 0)
 
                     img_tensor = img_tensor.cuda()
                     with autocast(self.use_fp16):
                         output = net(img_tensor)
                     output = F.softmax(output, dim=1)
-
+                    # print(output)
                     output = output.float().squeeze().cpu().numpy()
                     tta_output.append(output)
 
@@ -629,7 +622,26 @@ class My_Classifier(object):
                 net = EfficientNet.from_name(model_name=net_name)
                 num_ftrs = net._fc.in_features
                 net._fc = nn.Linear(num_ftrs, self.num_classes)
+        elif 'regnetx' in net_name:
+            from pycls import models
+            if not self.external_pretrained:
+                net = models.regnetx(net_name.split('-')[-1], pretrained=False, cfg_list=("MODEL.NUM_CLASSES",self.num_classes))
                 
+            else:
+                net = models.regnetx(net_name.split('-')[-1], pretrained=True)
+                num_ftrs = net.head.fc.in_features
+                net.head.fc = nn.Linear(num_ftrs, self.num_classes)
+        
+        elif 'regnety' in net_name:
+            from pycls import models
+            if not self.external_pretrained:
+                net = models.regnety(net_name.split('-')[-1], pretrained=False, cfg_list=("MODEL.NUM_CLASSES",self.num_classes))
+                
+            else:
+                net = models.regnety(net_name.split('-')[-1], pretrained=True)
+                num_ftrs = net.head.fc.in_features
+                net.head.fc = nn.Linear(num_ftrs, self.num_classes)
+
         elif 'directnet' in net_name:
             import model.directnet as directnet
             net = directnet.__dict__[net_name](in_channels=self.channels,num_classes=self.num_classes)
