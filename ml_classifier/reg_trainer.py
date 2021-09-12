@@ -83,11 +83,8 @@ class ML_Classifier(object):
     self.clf = self._get_clf()  
   
 
-  def trainer(self,train_df,target_key,random_state=21,metric=None,k_fold=5,scaler=False,pred_flag=False,test_df=None,test_csv=None,save_path=None):
+  def trainer(self,train_df,target_key,random_state=21,metric=None,k_fold=5,scale_factor=None,pred_flag=False,test_df=None,test_csv=None,save_path=None):
     params = self.params
-    if scaler:
-        scale_factor = 10
-        train_df[target_key] = train_df[target_key].apply(lambda x : scale_factor*x)
     fea_list= [f for f in train_df.columns if f != target_key]
     print('feature list:',fea_list)
 
@@ -159,13 +156,11 @@ class ML_Classifier(object):
     predictions = sum(predictions) / k_fold
 
     pred_df = pd.read_csv(test_csv)
-    pred_df['date'] = pred_df['日期']
 
-    if scaler:
-        predictions = (np.array(predictions)/scale_factor).tolist()
-        print(len(predictions))
+    if scale_factor is not None:
+        predictions = [round(case*scale_factor,1) for case in predictions]
     pred_df[target_key] = predictions
-    pred_df[['date',target_key]].to_csv(f'{save_path}/{self.clf_name}_result.csv',index=False)
+    pred_df[['group','image',target_key]].to_csv(f'{save_path}/{self.clf_name}_result.csv',index=False)
     return best_model
 
     

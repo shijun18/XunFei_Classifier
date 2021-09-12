@@ -12,7 +12,8 @@ def make_label_csv(input_path,csv_path,target_list=None):
         #     continue
         index = subdir.name
         path_list = glob.glob(os.path.join(subdir.path,"*.*g"))
-        sub_info = [[item,eval(index)] for item in path_list]
+        # sub_info = [[item,eval(index)] for item in path_list]
+        sub_info = [[item,index] for item in path_list]
         if target_list is not None:
             if eval(index) in target_list:
                 info.extend(sub_info)
@@ -56,6 +57,10 @@ if __name__ == "__main__":
 
     input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Crop_Growth/test-fake'
     csv_path = './csv_file/crop_growth_test_fake.csv'
+    make_label_csv(input_path,csv_path)
+
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Plastic_Drum/test'
+    csv_path = './csv_file/plastic_drum_test.csv'
     make_label_csv(input_path,csv_path)
 
     

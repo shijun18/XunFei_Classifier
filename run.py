@@ -18,7 +18,8 @@ KEY = {
     'Temp_Freq':['image_id','category_id'],
     'Farmer_Work':['image_id','category_id'],
     'Covid19':['sample_id','category_id'],
-    'Family_Env':['id','label']
+    'Family_Env':['id','label'],
+    'Plastic_Drum':['image','category_id']
 }
 
 ADD_FACTOR = {
@@ -29,7 +30,8 @@ ADD_FACTOR = {
     'Temp_Freq':0,
     'Farmer_Work':0,
     'Covid19':0,
-    'Family_Env':1
+    'Family_Env':1,
+    'Plastic_Drum':0
 }
 
 
@@ -254,6 +256,9 @@ if __name__ == "__main__":
             test_id.sort(key=lambda x:x.split('.')[0])
             test_path = [os.path.join(args.path, case)
                         for case in test_id]
+            
+            if TASK == 'Plastic_Drum':
+                test_path = list(csv_reader_single('./converter/csv_file/plastic_drum_test.csv',key_col='id', value_col='label').keys())
             save_path = os.path.join(save_dir,f'submission_fold{CURRENT_FOLD}.csv')
 
             start_time = time.time()
@@ -262,6 +267,9 @@ if __name__ == "__main__":
             print('run time:%.4f' % (time.time()-start_time))
 
             info = {}
+            if TASK == 'Plastic_Drum':
+                info['group'] = [int(os.path.dirname(case).split('/')[-1]) for case in test_path]
+
             info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
             info[KEY[TASK][1]] = [int(case) + add_factor for case in result['pred']]
             for i in range(NUM_CLASSES):
@@ -280,6 +288,10 @@ if __name__ == "__main__":
             test_id.sort(key=lambda x:x.split('.')[0])
             test_path = [os.path.join(args.path, case)
                         for case in test_id]
+            
+            if TASK == 'Plastic_Drum':
+                test_path = list(csv_reader_single('./converter/csv_file/plastic_drum_test.csv',key_col='id', value_col='label').keys())
+            
             save_path_vote = os.path.join(save_dir,'submission_vote.csv')
             save_path = os.path.join(save_dir,'submission_ave.csv')
 
@@ -314,6 +326,10 @@ if __name__ == "__main__":
             print('run time:%.4f' % (time.time()-start_time))
 
             info = {}
+            
+            if TASK == 'Plastic_Drum':
+                info['group'] = [int(os.path.dirname(case).split('/')[-1]) for case in test_path]
+
             info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
             info[KEY[TASK][1]] = [int(case) + add_factor for case in result['pred']]
             for i in range(NUM_CLASSES):
@@ -323,6 +339,9 @@ if __name__ == "__main__":
             csv_file.to_csv(save_path, index=False)
 
             info = {}
+            if TASK == 'Plastic_Drum':
+                info['group'] = [int(os.path.dirname(case).split('/')[-1]) for case in test_path]
+
             info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
             info[KEY[TASK][1]] = [int(case) + add_factor for case in result['vote_pred']]
             for i in range(NUM_CLASSES):

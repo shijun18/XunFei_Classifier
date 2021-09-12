@@ -1,10 +1,8 @@
  
 __all__ = ['resnet18','resnet34', 'resnet50','resnest18','resnest50','efficientnet-b5'\
-            'efficientnet-b7','efficientnet-b3','efficientnet-b8','densenet121','densenet169','regnetx-600MF','regnety-16GF','vgg16','res2net50','res2net18','res2next50', 'simple_net',\
+            'efficientnet-b7','efficientnet-b3','efficientnet-b8','densenet121','densenet169','regnetx-600MF','regnetx-800MF','vgg16','res2net50','res2net18','res2next50', 'simple_net',\
             'res2next18','se_resnet18', 'se_resnet10','bilinearnet_b5','finenet50','directnet50', ]
 
-
-from re import T
 
 
 data_config = {
@@ -21,7 +19,7 @@ data_config = {
 
 num_classes = {
     'Adver_Material':137,
-    'Crop_Growth':4,
+    'Crop_Growth':2,
     'Photo_Guide':8,
     'Leve_Disease':3,
     'Temp_Freq':24,
@@ -31,14 +29,14 @@ num_classes = {
     'Plastic_Drum':2
 }
 
-TASK = 'Crop_Growth'
-NET_NAME = 'efficientnet-b5'
-VERSION = 'v6.0-pretrained-mod' 
+TASK = 'Plastic_Drum'
+NET_NAME = 'resnet50'
+VERSION = 'v3.0-pretrained' 
 DEVICE = '4'
 # Must be True when pre-training and inference
 PRE_TRAINED = True
 # 1,2,3,4
-CURRENT_FOLD = 5
+CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))
 FOLD_NUM = 5
 TTA_TIMES = 1
@@ -54,7 +52,7 @@ WEIGHT_PATH = get_weight_path(CKPT_PATH)
 print(WEIGHT_PATH)
 
 if PRE_TRAINED:
-    WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION),[1,2,5])
+    WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION))
 else:
     WEIGHT_PATH_LIST = None
 
@@ -68,7 +66,8 @@ MEAN = {
     'Temp_Freq':None,
     'Farmer_Work':(0.486,0.496,0.403), #(0.486,0.496,0.403) (0.479)
     'Covid19':None,
-    'Family_Env':None
+    'Family_Env':None,
+    'Plastic_Drum':None
 }
 
 STD = {
@@ -79,7 +78,8 @@ STD = {
     'Temp_Freq':None,
     'Farmer_Work':(0.237,0.231,0.246), #(0.237,0.231,0.246) (0.228)
     'Covid19':None,
-    'Family_Env':None
+    'Family_Env':None,
+    'Plastic_Drum':None
     
 }
 
@@ -91,7 +91,8 @@ MILESTONES = {
     'Temp_Freq':[30,60,90],
     'Farmer_Work':[30,60,90],
     'Covid19':[30,60,90],
-    'Family_Env':[30,60,90]
+    'Family_Env':[30,60,90],
+    'Plastic_Drum':[10,20]
 }
 
 EPOCH = {
@@ -102,18 +103,21 @@ EPOCH = {
     'Temp_Freq':120,
     'Farmer_Work':50,
     'Covid19':120,
-    'Family_Env':120
+    'Family_Env':120,
+    'Plastic_Drum':30
+    
 }
 
 TRANSFORM = {
     'Adver_Material':[2,6,7,8,9],#[6,7,8,2,9]
-    'Crop_Growth':[18,2,4,6,7,8,9,19], # [18,2,4,6,7,8,9,19] / [18,2,3,4,5,6,7,8,9,19] new
+    'Crop_Growth':[18,2,3,4,5,6,7,8,9,19] if 'new' in VERSION else [18,2,4,6,7,8,9,19], # [18,2,4,6,7,8,9,19] / [18,2,3,4,5,6,7,8,9,19] new
     'Photo_Guide':[18,2,6,9,19],#v5.2 v6.0-pretrained v6.0-all-pre,v6.0-pre-new,v6.0-pre-fake
     'Leve_Disease':[2,18,6,7,8,9,19], #[2,6,7,8,9,10,19] (6.2-pre) (7,8-p=1) / [2,18,6,7,8,9,19](6.0-pre-new)
     'Temp_Freq':[2,4,9,19], #[2,3,4,9,19](6.0-pre) [2,4,9,19](6.1-pre) 
     'Farmer_Work':[2,6,7,8,9,10,19], #v6.0-pre v6.0-crop-pre (7,8-p=1)
     'Covid19':[2,18,6,7,8,9,19],
-    'Family_Env':[20,2,4,7,8,9,19] #[[20,2,4,7,8,9,19] v6.0-pre-new v3.0-pre v8.0-pre/[20,2,3,7,8,9,19] v7.0-pre-new
+    'Family_Env':[20,2,4,7,8,9,19], #[[20,2,4,7,8,9,19] v6.0-pre-new v3.0-pre v8.0-pre/[20,2,3,7,8,9,19] v7.0-pre-new
+    'Plastic_Drum':[2,7,8,9,19]
 }
 
 SHAPE = {
@@ -124,7 +128,8 @@ SHAPE = {
     'Temp_Freq':(512,512),
     'Farmer_Work':(512,512),
     'Covid19':(256, 256),
-    'Family_Env':(512,512)
+    'Family_Env':(512,512),
+    'Plastic_Drum':(512,512)
 }
 
 
@@ -136,7 +141,8 @@ CHANNEL = {
     'Temp_Freq':3,
     'Farmer_Work':3, #3
     'Covid19':3,
-    'Family_Env':3
+    'Family_Env':3,
+    'Plastic_Drum':3
 }
 
 # Arguments when trainer initial
@@ -192,7 +198,8 @@ CLASS_WEIGHT = {
     'Temp_Freq':None,
     'Farmer_Work':None,
     'Covid19':[1.0,2.0],
-    'Family_Env':None
+    'Family_Env':None,
+    'Plastic_Drum':None
 }
 
 
@@ -204,7 +211,8 @@ MONITOR = {
     'Temp_Freq':'val_acc',
     'Farmer_Work':'val_acc', 
     'Covid19':'val_f1',
-    'Family_Env':'val_acc'
+    'Family_Env':'val_acc',
+    'Plastic_Drum':'val_acc'
 }
 
 SETUP_TRAINER = {

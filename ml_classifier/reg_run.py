@@ -93,7 +93,7 @@ SETUP_TRAINER = {
   'random_state':21,
   'metric':METRICS_REG,
   'k_fold':10,
-  'scaler':False
+  'scale_factor':None
 }
 
 
