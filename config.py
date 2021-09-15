@@ -1,7 +1,9 @@
  
 __all__ = ['resnet18','resnet34', 'resnet50','resnest18','resnest50','efficientnet-b5'\
-            'efficientnet-b7','efficientnet-b3','efficientnet-b8','densenet121','densenet169','regnetx-600MF','regnetx-800MF','vgg16','res2net50','res2net18','res2next50', 'simple_net',\
-            'res2next18','se_resnet18', 'se_resnet10','bilinearnet_b5','finenet50','directnet50', ]
+            'efficientnet-b7','efficientnet-b3','efficientnet-b8','densenet121','densenet169',\
+            'regnetx-200MF','regnetx-600MF','regnety-600MF',\
+            'vgg16','res2net50','res2net18','res2next50', 'simplenet','simplenetv2','simplenetv3','simplenetv4','simplenetv5',\
+            'res2next18','se_resnet18', 'se_resnet10','bilinearnet_b5','finenet50','directnet50']
 
 
 
@@ -13,13 +15,13 @@ data_config = {
     'Temp_Freq':'./converter/csv_file/temp_freq.csv',
     'Farmer_Work':'./converter/csv_file/farmer_work_final_v3.csv', #farmer_work_lite_external_v3.csv
     'Covid19':'./converter/csv_file/covid19.csv',
-    'Family_Env':'./converter/csv_file/family_env.csv',
+    'Family_Env':'./converter/csv_file/family_env.csv',#'/staff/honeyk/project/XunFei_Classifier-main/converter/csv_file/Home_ev_img_all.csv',
     'Plastic_Drum':'./converter/csv_file/plastic_drum.csv'
 }
 
 num_classes = {
     'Adver_Material':137,
-    'Crop_Growth':2,
+    'Crop_Growth':4,#4
     'Photo_Guide':8,
     'Leve_Disease':3,
     'Temp_Freq':24,
@@ -29,17 +31,17 @@ num_classes = {
     'Plastic_Drum':2
 }
 
-TASK = 'Plastic_Drum'
-NET_NAME = 'resnet50'
-VERSION = 'v3.0-pretrained' 
-DEVICE = '4'
+TASK = 'Temp_Freq'
+NET_NAME = 'simplenetv2' #regnetx-200MF
+VERSION = 'v20.0' #v12.0-pretrained-mod-1-023
+DEVICE = '3'
 # Must be True when pre-training and inference
 PRE_TRAINED = True
 # 1,2,3,4
-CURRENT_FOLD = 1
+CURRENT_FOLD = 5
 GPU_NUM = len(DEVICE.split(','))
 FOLD_NUM = 5
-TTA_TIMES = 1
+TTA_TIMES = 33
 
 
 NUM_CLASSES = num_classes[TASK]
@@ -52,7 +54,7 @@ WEIGHT_PATH = get_weight_path(CKPT_PATH)
 print(WEIGHT_PATH)
 
 if PRE_TRAINED:
-    WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION))
+    WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION),[1,2,5])
 else:
     WEIGHT_PATH_LIST = None
 
@@ -88,7 +90,7 @@ MILESTONES = {
     'Crop_Growth':[30,60,90],
     'Photo_Guide':[30,60,90],
     'Leve_Disease':[30,60,90],
-    'Temp_Freq':[30,60,90],
+    'Temp_Freq':[250,450], #[300]
     'Farmer_Work':[30,60,90],
     'Covid19':[30,60,90],
     'Family_Env':[30,60,90],
@@ -100,7 +102,7 @@ EPOCH = {
     'Crop_Growth':120,
     'Photo_Guide':120, #120
     'Leve_Disease':120,
-    'Temp_Freq':120,
+    'Temp_Freq':600, #600
     'Farmer_Work':50,
     'Covid19':120,
     'Family_Env':120,
@@ -113,10 +115,10 @@ TRANSFORM = {
     'Crop_Growth':[18,2,3,4,5,6,7,8,9,19] if 'new' in VERSION else [18,2,4,6,7,8,9,19], # [18,2,4,6,7,8,9,19] / [18,2,3,4,5,6,7,8,9,19] new
     'Photo_Guide':[18,2,6,9,19],#v5.2 v6.0-pretrained v6.0-all-pre,v6.0-pre-new,v6.0-pre-fake
     'Leve_Disease':[2,18,6,7,8,9,19], #[2,6,7,8,9,10,19] (6.2-pre) (7,8-p=1) / [2,18,6,7,8,9,19](6.0-pre-new)
-    'Temp_Freq':[2,4,9,19], #[2,3,4,9,19](6.0-pre) [2,4,9,19](6.1-pre) 
+    'Temp_Freq':[2,3,4,7,8,9,19] if 'new' in VERSION else [2,3,4,9,19], #[2,3,4,9,19](6.0-pre)
     'Farmer_Work':[2,6,7,8,9,10,19], #v6.0-pre v6.0-crop-pre (7,8-p=1)
     'Covid19':[2,18,6,7,8,9,19],
-    'Family_Env':[20,2,4,7,8,9,19], #[[20,2,4,7,8,9,19] v6.0-pre-new v3.0-pre v8.0-pre/[20,2,3,7,8,9,19] v7.0-pre-new
+    'Family_Env':[20,2,3,4,7,8,9,19], #[[20,2,4,7,8,9,19] v6.0-pre-new  v8.0-pre /[20,2,3,4,7,8,9,19] v6.0-pre
     'Plastic_Drum':[2,7,8,9,19]
 }
 
@@ -138,10 +140,10 @@ CHANNEL = {
     'Crop_Growth':3,
     'Photo_Guide':3,# C=1 v5.2 v6.0-pretrained /C=3 v6.0-all-pre,v6.0-pre-new,v6.0-pre-fake
     'Leve_Disease':3,
-    'Temp_Freq':3,
+    'Temp_Freq':1,#3
     'Farmer_Work':3, #3
     'Covid19':3,
-    'Family_Env':3,
+    'Family_Env':1, #3
     'Plastic_Drum':3
 }
 
@@ -218,7 +220,7 @@ MONITOR = {
 SETUP_TRAINER = {
     'output_dir': './ckpt/{}/{}'.format(TASK,VERSION),
     'log_dir': './log/{}/{}'.format(TASK,VERSION),
-    'optimizer': 'Adam', 
+    'optimizer': 'AdamW', 
     'loss_fun': LOSS_FUN,
     'class_weight': CLASS_WEIGHT[TASK],
     'lr_scheduler': 'MultiStepLR', #'MultiStepLR'

@@ -577,10 +577,10 @@ class My_Classifier(object):
             from model.se_resnet import se_resnet10
             net = se_resnet10(input_channels=self.channels,
                               num_classes=self.num_classes,final_drop=self.drop_rate)
-        elif net_name == 'simple_net':
-            from model.simple_net import simple_net
-            net = simple_net(input_channels=self.channels,
-                             num_classes=self.num_classes,final_drop=self.drop_rate)
+        elif net_name.startswith('simplenet'):
+            import model.simplenet as simplenet
+            net = simplenet.__dict__[net_name](input_channels=self.channels,
+                             num_classes=self.num_classes,final_drop=0.2)
         elif net_name.startswith('densenet'):
             import model.densenet as densenet
             net = densenet.__dict__[net_name](pretrained=self.external_pretrained,input_channels=self.channels,
@@ -622,6 +622,9 @@ class My_Classifier(object):
                 net = EfficientNet.from_name(model_name=net_name)
                 num_ftrs = net._fc.in_features
                 net._fc = nn.Linear(num_ftrs, self.num_classes)
+            if 'maxpool' in net_name:
+                net._avg_pooling = nn.AdaptiveMaxPool2d(1)
+
         elif 'regnetx' in net_name:
             from pycls import models
             if not self.external_pretrained:
@@ -641,6 +644,9 @@ class My_Classifier(object):
                 net = models.regnety(net_name.split('-')[-1], pretrained=True)
                 num_ftrs = net.head.fc.in_features
                 net.head.fc = nn.Linear(num_ftrs, self.num_classes)
+            
+            if 'maxpool' in net_name:
+                net.head.avg_pool = nn.AdaptiveMaxPool2d(1)
 
         elif 'directnet' in net_name:
             import model.directnet as directnet
