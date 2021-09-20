@@ -1,7 +1,7 @@
 import os 
 import pandas as pd
 import numpy as np
-from pandas.tseries.offsets import QuarterBegin
+import cv2
 
 
 def run_air():
@@ -189,5 +189,95 @@ def run_family():
     df[col_name].to_csv(save_path,index=False)
 
 
+
+def run_plastic():
+    def compute_coord(img_path,scale=False):
+        print(img_path)
+        img = cv2.imread(img_path,0)
+        _,binary = cv2.threshold(img,200,255,cv2.THRESH_BINARY)
+        mask = np.zeros_like(img,dtype=np.uint8)
+        contours,_ = cv2.findContours(binary,cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        area = [cv2.contourArea(contours[i]) for i in range(len(contours))]
+        max_idx = np.argmax(area)
+        cv2.drawContours(mask,contours,max_idx,1,cv2.FILLED)
+
+        l_w = 650
+        r_w = 1300
+        l_h1 = min(np.nonzero(mask[:,l_w])[0])
+        l_h2 = max(np.nonzero(mask[:,l_w])[0])
+        r_h1 = min(np.nonzero(mask[:,r_w])[0])
+        r_h2 = max(np.nonzero(mask[:,r_w])[0])
+        coord_list = [l_w,l_h1,l_h2,r_w,r_h1,r_h2]
+        if scale:
+            coord_list = [l_w/1624,l_h1/1240,l_h2/1240,r_w/1624,r_h1/1240,r_h2/1240]
+        print(coord_list)
+        return coord_list
+
+    #train data
+    train_path = '../converter/csv_file/plastic_drum.csv'
+    df = pd.read_csv(train_path)
+    index_array = np.asarray(df[[f'index_{case}' for case in range(1,7)]])
+    select_index = np.nonzero(np.array(np.sum(index_array,axis=1)!=-6))[0]
+    print(len(select_index))
+    df = df.iloc[list(select_index)]
+
+    coord = []
+    for item in df.iterrows():
+        coord.append(compute_coord(item[1][-1],scale=True))
+    
+    coord_array = np.asarray(coord)
+    print(coord_array.shape)
+    df['l_w'] = list(coord_array[:,0])
+    df['l_h1'] = list(coord_array[:,1])
+    df['l_h2'] = list(coord_array[:,2])
+    df['r_w'] = list(coord_array[:,3])
+    df['r_h1'] = list(coord_array[:,4])
+    df['r_h2'] = list(coord_array[:,5])
+    df['l_sub'] = list(coord_array[:,2] - coord_array[:,1])
+    df['r_sub'] = list(coord_array[:,5] - coord_array[:,4])
+
+    for i in range(1,7):
+        if i < 5:
+            df[f'scale_index_{i}'] = df[f'index_{i}'].apply(lambda x:x/1240)
+        else:
+            df[f'scale_index_{i}'] = df[f'index_{i}'].apply(lambda x:x/1624)
+    del df['id']
+    del df['label']
+    print(df)
+    save_path = './dataset/plastic_drum/train_xy_new.csv'
+    df.to_csv(save_path,index=False)
+
+    # test data
+    test_csv = '../analysis/result/Plastic_Drum/v3.0-pretrained/submission_ave.csv'
+    df = pd.read_csv(test_csv)
+    index_array = np.asarray(df['category_id'])
+    select_index = np.nonzero(index_array!=0)[0]
+    print(len(select_index))
+    df = df.iloc[list(select_index)]
+
+    coord = []
+    for item in df.iterrows():
+        item_path = os.path.join('../dataset/Plastic_Drum/test',str(item[1][0]).zfill(2) + f'/{item[1][1]}')
+        coord.append(compute_coord(item_path,scale=True))
+    
+    coord_array = np.asarray(coord)
+    print(coord_array.shape)
+    df['l_w'] = list(coord_array[:,0])
+    df['l_h1'] = list(coord_array[:,1])
+    df['l_h2'] = list(coord_array[:,2])
+    df['r_w'] = list(coord_array[:,3])
+    df['r_h1'] = list(coord_array[:,4])
+    df['r_h2'] = list(coord_array[:,5])
+    df['l_sub'] = list(coord_array[:,2] - coord_array[:,1])
+    df['r_sub'] = list(coord_array[:,5] - coord_array[:,4])
+
+    del df['category_id']
+    del df['prob_1']
+    del df['prob_2']
+    print(df)
+    save_path = './dataset/plastic_drum/test_xy_new.csv'
+    df.to_csv(save_path,index=False)
+
 if __name__ == '__main__':
-    run_family()
+    # run_family()
+    run_plastic()

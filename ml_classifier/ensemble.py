@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 def plastic_ensemble():
-    result_path = './result/plastic_drum'
+    result_path = './result/plastic_drum/new'
     for subdir in os.scandir(result_path):
         if subdir.is_dir():
             save_path = os.path.join(result_path,subdir.name + '.csv')
@@ -32,7 +32,7 @@ def plastic_ensemble():
     
     for item in info:
         df = pd.DataFrame(data=info[item])
-        df.to_csv(f'./result/plastic_drum/{item}.csv',index=False)
+        df.to_csv(f'./result/plastic_drum/new/{item}.csv',index=False)
 
 
 def plastic_make_csv():
@@ -59,12 +59,12 @@ def plastic_make_csv():
             info[f'index_{i}'].extend([-1]*len(subitem))
     
     df = pd.DataFrame(data=info)
-    df.to_csv('./result/plastic_drum/test_base_result.csv',index=False)
+    df.to_csv('./result/plastic_drum/new/test_base_result.csv',index=False)
 
 
 def plastic_merge():
-    test_base_csv = './result/plastic_drum/test_base_result.csv'
-    pred_csv = './result/plastic_drum/lr_result.csv'
+    test_base_csv = './result/plastic_drum/new/test_base_result.csv'
+    pred_csv = './result/plastic_drum/new/lr_result.csv'
     test_df = pd.read_csv(test_base_csv)
     pred_df = pd.read_csv(pred_csv)
     test_info = {}
@@ -87,10 +87,10 @@ def plastic_merge():
             new_info.append(info_item)
     
     new_df = pd.DataFrame(data=new_info,columns=col)
-    new_df.to_csv('./result/plastic_drum/merge_lr_result.csv',index=False)
+    new_df.to_csv('./result/plastic_drum/new/merge_lr_result.csv',index=False)
 
 if __name__ == '__main__':
    
-    # plastic_ensemble()
-    # plastic_make_csv()
+    plastic_ensemble()
+    plastic_make_csv()
     plastic_merge()

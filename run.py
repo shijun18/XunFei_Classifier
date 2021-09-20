@@ -97,7 +97,7 @@ def get_parameter_number(net):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--mode', default='train-cross', choices=["train-cross", "inf-cross", "train","train-val-cross", "inf","train-val"],
+    parser.add_argument('-m', '--mode', default='train-cross', choices=["train-cross", "inf-cross", "train","train-val-cross","inf-tta", "inf","train-val"],
                         help='choose the mode', type=str)
     parser.add_argument('-s', '--save', default='no', choices=['no', 'n', 'yes', 'y'],
                         help='save the forward middle features or not', type=str)
@@ -131,7 +131,7 @@ if __name__ == "__main__":
         loss_list = []
         acc_list = []
 
-        for current_fold in range(1, FOLD_NUM+1):
+        for current_fold in range(4, FOLD_NUM+1):
             print("=== Training Fold ", current_fold, " ===")
             if INIT_TRAINER['pre_trained']:
                 INIT_TRAINER['weight_path'] = WEIGHT_PATH_LIST[current_fold-1]
@@ -250,7 +250,7 @@ if __name__ == "__main__":
         save_dir = './analysis/result/{}/{}'.format(TASK,VERSION)
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-        if args.mode == 'inf':
+        if args.mode == 'inf' or args.mode == 'inf-tta':
             test_id = os.listdir(args.path)
             # test_id.sort(key=lambda x:eval(x.split('.')[0].split('_')[-1]))
             test_id.sort(key=lambda x:x.split('.')[0])
@@ -262,8 +262,12 @@ if __name__ == "__main__":
             save_path = os.path.join(save_dir,f'submission_fold{CURRENT_FOLD}.csv')
 
             start_time = time.time()
-
-            result = classifier.inference(test_path)
+            if args.mode == 'inf-tta':
+                 result = {}
+                 result['prob'],result['pred'] = classifier.inference_tta(test_path, TTA_TIMES)
+                 save_path = os.path.join(save_dir,f'submission_fold{CURRENT_FOLD}_tta{TTA_TIMES}.csv')
+            else:
+                result = classifier.inference(test_path)
             print('run time:%.4f' % (time.time()-start_time))
 
             info = {}
@@ -292,8 +296,8 @@ if __name__ == "__main__":
             if TASK == 'Plastic_Drum':
                 test_path = list(csv_reader_single('./converter/csv_file/plastic_drum_test.csv',key_col='id', value_col='label').keys())
             
-            save_path_vote = os.path.join(save_dir,'submission_vote.csv')
-            save_path = os.path.join(save_dir,'submission_ave.csv')
+            save_path_vote = os.path.join(save_dir,f'submission_vote_tta{TTA_TIMES}.csv')
+            save_path = os.path.join(save_dir,f'submission_ave_tta{TTA_TIMES}.csv')
 
             result = {
                 'pred': [],

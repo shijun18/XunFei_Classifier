@@ -20,6 +20,23 @@ def vote_ensemble(csv_path_list, save_path, col='category_id'):
     final_csv = pd.DataFrame(result)
     final_csv.to_csv(save_path, index=False)
 
+
+def prob_ensemble(csv_path_list, save_path, col='category_id'):
+    result = {}
+    ensemble_list = []
+    for csv_path in csv_path_list:
+        csv_file = pd.read_csv(csv_path)
+        ensemble_list.append(np.asarray(csv_file[[col_name for col_name in csv_file.columns if col_name not in [col,'image_id']]]))
+    ensemble_array = np.asarray(ensemble_list)
+    print(ensemble_array.shape)
+    ensemble_array = np.mean(ensemble_array,axis=0)
+    ensemble_result = np.argmax(ensemble_array,axis=1)
+    result['image_id'] = csv_file['image_id'].values.tolist()
+    result['category_id'] = list(ensemble_result)
+
+    final_csv = pd.DataFrame(result)
+    final_csv.to_csv(save_path, index=False)
+
 def diff(csv_a,csv_b,col='category_id'):
     col_a = np.array(pd.read_csv(csv_a)[col])
     col_b = np.array(pd.read_csv(csv_b)[col])
@@ -27,12 +44,14 @@ def diff(csv_a,csv_b,col='category_id'):
 
 if __name__ == "__main__":
 
-    save_path = './result/Crop_Growth/fusion.csv'
+    save_path = './result/Temp_Freq/fusion_prob_21w_26_27w_tta5.csv'
     if os.path.exists(save_path):
         os.remove(save_path)
-    dir_list = os.listdir('./result/Crop_Growth/')
-    dir_list.sort()
-    csv_path_list = [os.path.join('./result/Crop_Growth/',case + '/submission_ave.csv') for case in dir_list]
+    dir_list = os.listdir('./result/Temp_Freq/')
+    dir_list.sort(reverse=True)
+    csv_path_list = [os.path.join('./result/Temp_Freq/',case + '/submission_ave_tta5.csv') for case in dir_list if case in ['v26.0','v21.0-warmup','v27.0-warmup']]
+    
     print(csv_path_list)
-    vote_ensemble(csv_path_list, save_path)
-    print('diff %d with target'%(diff(save_path,'../converter/csv_file/crop_growth_fake_result.csv')))
+    # vote_ensemble(csv_path_list, save_path)
+    prob_ensemble(csv_path_list, save_path)
+    print('diff %d with target'%(diff(save_path,'../converter/csv_file/temp_freq_fake_result.csv')))

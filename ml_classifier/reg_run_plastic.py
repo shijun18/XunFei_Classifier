@@ -2,7 +2,7 @@ import os
 from numpy import fabs
 from numpy.core.fromnumeric import mean
 import pandas as pd 
-import pickle
+import shutil
 from reg_trainer import ML_Classifier,params_dict
 import math
 from sklearn.metrics import make_scorer
@@ -11,7 +11,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import numpy as np
 
-_AVAIL_CLF = ['lr','xgboost','random_forest','extra_trees','bagging']
+_AVAIL_CLF = ['lr']
 
 def rmse(y_true,y_pred):
     return mean_squared_error(y_true=y_true,y_pred=y_pred) ** 0.5
@@ -40,17 +40,17 @@ SETUP_TRAINER = {
 
 if __name__ == "__main__":
 
-    for index in [1,5,6]:
+    for index in range(1,7):
         SETUP_TRAINER['target_key'] = f'scale_index_{index}'
         if index > 4:
             SETUP_TRAINER['scale_factor'] = 1624
         else:
             SETUP_TRAINER['scale_factor'] = 1240
 
-        train_path = './dataset/plastic_drum/train_xy.csv'
+        train_path = './dataset/plastic_drum/train_xy_new.csv'
         train_df = pd.read_csv(train_path)
 
-        test_path = './dataset/plastic_drum/test_xy.csv'
+        test_path = './dataset/plastic_drum/test_xy_new.csv'
         test_df = pd.read_csv(test_path)
 
         index_list = [f'index_{i}' for i in range(1,7)]
@@ -61,10 +61,12 @@ if __name__ == "__main__":
         test_df = test_df[fea_list]
         train_df = train_df[fea_list + [f'scale_index_{index}']]
 
-        save_path = f'./result/plastic_drum/index_{index}'
+        save_path = f'./result/plastic_drum/new/index_{index}'
         if not os.path.exists(save_path):
             os.makedirs(save_path)
-
+        else:
+            shutil.rmtree(save_path)
+            os.makedirs(save_path)
         # clf_name = 'xgboost' 
         # classifier = ML_Classifier(clf_name=clf_name,params=params_dict[clf_name])
         # model = classifier.trainer(train_df=train_df,**SETUP_TRAINER,pred_flag=True,test_df=test_df,test_csv=test_path,save_path=save_path)

@@ -40,7 +40,7 @@ class DataGenerator(Dataset):
       if self.label_dict is not None:
           label = self.label_dict[self.path_list[index]]    
           # Transform
-          sample = {'image':image, 'label':int(label)}
+          sample = {'image':image, 'label':int(label)} #01/23 -> >1
       else:
           sample = {'image':image}
       

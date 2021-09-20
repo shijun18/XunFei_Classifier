@@ -1,9 +1,11 @@
  
-__all__ = ['resnet18','resnet34', 'resnet50','resnest18','resnest50','efficientnet-b5'\
-            'efficientnet-b7','efficientnet-b3','efficientnet-b8','densenet121','densenet169',\
-            'regnetx-200MF','regnetx-600MF','regnety-600MF',\
-            'vgg16','res2net50','res2net18','res2next50', 'simplenet','simplenetv2','simplenetv3','simplenetv4','simplenetv5',\
-            'res2next18','se_resnet18', 'se_resnet10','bilinearnet_b5','finenet50','directnet50']
+__all__ = ['resnet18','resnet34', 'resnet50','resnest18','resnest50',\
+            'efficientnet-b5','efficientnet-b7','efficientnet-b3','efficientnet-b8','densenet121',\
+            'densenet169','regnetx-200MF','regnetx-600MF','regnety-600MF','regnety-4.0GF',\
+            'res2net50','res2net18','res2next50', 'simplenet','simplenetv2',\
+            'simplenetv3','simplenetv4','simplenetv5','simplenetv6','simplenetv7',\
+            'simplenetv8','simplenetv9','simplenetv10','res2next18','se_resnet18', 'se_resnet10',\
+            'bilinearnet_b5','finenet50','directnet50']
 
 
 
@@ -32,16 +34,16 @@ num_classes = {
 }
 
 TASK = 'Temp_Freq'
-NET_NAME = 'simplenetv2' #regnetx-200MF
-VERSION = 'v20.0' #v12.0-pretrained-mod-1-023
-DEVICE = '3'
+NET_NAME = 'simplenetv8' #regnetx-200MF
+VERSION = 'v26.0' #v12.0-pretrained-mod-1-023
+DEVICE = '2'
 # Must be True when pre-training and inference
-PRE_TRAINED = True
+PRE_TRAINED = True	
 # 1,2,3,4
 CURRENT_FOLD = 5
 GPU_NUM = len(DEVICE.split(','))
 FOLD_NUM = 5
-TTA_TIMES = 33
+TTA_TIMES = 5
 
 
 NUM_CLASSES = num_classes[TASK]
@@ -49,11 +51,12 @@ from utils import get_weight_path,get_weight_list
 
 CSV_PATH = data_config[TASK]
 CKPT_PATH = './ckpt/{}/{}/fold{}'.format(TASK,VERSION,str(CURRENT_FOLD))
-# CKPT_PATH = './ckpt/{}/{}/fold{}'.format(TASK,'v6.0-pretrained',str(CURRENT_FOLD))
+# CKPT_PATH = './ckpt/{}/{}/fold{}'.format(TASK,'v21.0',str(CURRENT_FOLD))
 WEIGHT_PATH = get_weight_path(CKPT_PATH)
 print(WEIGHT_PATH)
 
 if PRE_TRAINED:
+    # WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,'v21.0'))
     WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION),[1,2,5])
 else:
     WEIGHT_PATH_LIST = None
@@ -90,10 +93,10 @@ MILESTONES = {
     'Crop_Growth':[30,60,90],
     'Photo_Guide':[30,60,90],
     'Leve_Disease':[30,60,90],
-    'Temp_Freq':[250,450], #[300]
+    'Temp_Freq':[90,150] if 'new' in VERSION else [40,90,140], #[250,400],[120,200], [40,80]:v21.0 / [80,130]:v26.0
     'Farmer_Work':[30,60,90],
     'Covid19':[30,60,90],
-    'Family_Env':[30,60,90],
+    'Family_Env':[40,70,100],#[30,60,90]
     'Plastic_Drum':[10,20]
 }
 
@@ -102,10 +105,10 @@ EPOCH = {
     'Crop_Growth':120,
     'Photo_Guide':120, #120
     'Leve_Disease':120,
-    'Temp_Freq':600, #600
+    'Temp_Freq':200 if 'new' in VERSION else 180, #600,250, 120:v21.0 / 180:v26.0
     'Farmer_Work':50,
     'Covid19':120,
-    'Family_Env':120,
+    'Family_Env':120, #120
     'Plastic_Drum':30
     
 }
@@ -115,10 +118,10 @@ TRANSFORM = {
     'Crop_Growth':[18,2,3,4,5,6,7,8,9,19] if 'new' in VERSION else [18,2,4,6,7,8,9,19], # [18,2,4,6,7,8,9,19] / [18,2,3,4,5,6,7,8,9,19] new
     'Photo_Guide':[18,2,6,9,19],#v5.2 v6.0-pretrained v6.0-all-pre,v6.0-pre-new,v6.0-pre-fake
     'Leve_Disease':[2,18,6,7,8,9,19], #[2,6,7,8,9,10,19] (6.2-pre) (7,8-p=1) / [2,18,6,7,8,9,19](6.0-pre-new)
-    'Temp_Freq':[2,3,4,7,8,9,19] if 'new' in VERSION else [2,3,4,9,19], #[2,3,4,9,19](6.0-pre)
+    'Temp_Freq':[2,3,4,9,19], #[2,3,4,9,19](6.0-pre)
     'Farmer_Work':[2,6,7,8,9,10,19], #v6.0-pre v6.0-crop-pre (7,8-p=1)
     'Covid19':[2,18,6,7,8,9,19],
-    'Family_Env':[20,2,3,4,7,8,9,19], #[[20,2,4,7,8,9,19] v6.0-pre-new  v8.0-pre /[20,2,3,4,7,8,9,19] v6.0-pre
+    'Family_Env':[20,2,3,4,7,8,9,19] if 'new' in VERSION else [20,2,4,7,8,9,19], #[20,2,3,4,7,8,9,19] v6.0-pre-new
     'Plastic_Drum':[2,7,8,9,19]
 }
 
@@ -140,8 +143,8 @@ CHANNEL = {
     'Crop_Growth':3,
     'Photo_Guide':3,# C=1 v5.2 v6.0-pretrained /C=3 v6.0-all-pre,v6.0-pre-new,v6.0-pre-fake
     'Leve_Disease':3,
-    'Temp_Freq':1,#3
-    'Farmer_Work':3, #3
+    'Temp_Freq':3 if 'new' in VERSION else 1,#3
+    'Farmer_Work':3, 
     'Covid19':3,
     'Family_Env':1, #3
     'Plastic_Drum':3
@@ -156,7 +159,7 @@ INIT_TRAINER = {
     'num_classes': NUM_CLASSES,
     'input_shape': SHAPE[TASK],
     'crop': 0,
-    'batch_size': 32,
+    'batch_size': 32, #32
     'num_workers': 2,
     'device': DEVICE,
     'pre_trained': PRE_TRAINED,
@@ -223,7 +226,7 @@ SETUP_TRAINER = {
     'optimizer': 'AdamW', 
     'loss_fun': LOSS_FUN,
     'class_weight': CLASS_WEIGHT[TASK],
-    'lr_scheduler': 'MultiStepLR', #'MultiStepLR'
+    'lr_scheduler': 'MultiStepLR', #'MultiStepLR','CosineAnnealingWarmRestarts' for fine-tune and warmup
     'balance_sample':True if 'balance' in VERSION else False,#False
     'monitor':MONITOR[TASK],
     'repeat_factor':1.0
