@@ -509,7 +509,7 @@ class SimpleNetV10(nn.Module):
         Construct a SimpleNet
         """
         super(SimpleNetV10, self).__init__()
-        kernel_size_list = [(9,9),(15,15)]
+        kernel_size_list = [(15,15),(15,15)]
         dilation_list = [1,12,24,36]
         self.backbone = []
         for i in range(depth-2):
@@ -606,7 +606,7 @@ def simplenetv9(**kwargs):
 
 def simplenetv10(**kwargs):
     
-    model = SimpleNetV10(BasicBlock, [32,64,128,256], 4, **kwargs)
+    model = SimpleNetV10(BasicBlock, [64,128,256,512], 4, **kwargs)
     return model
 
 if __name__ == "__main__":

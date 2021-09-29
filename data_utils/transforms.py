@@ -75,7 +75,5 @@ class Trimming(object):
         else:
             crop = (0,0,w,h)
         new_img = image.crop(crop)
-
+    
         return new_img
-
-        
