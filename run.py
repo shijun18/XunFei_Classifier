@@ -265,7 +265,6 @@ if __name__ == "__main__":
             if args.mode == 'inf-tta':
                  result = {}
                  result['prob'],result['pred'] = classifier.inference_tta(test_path, TTA_TIMES)
-                 save_path = os.path.join(save_dir,f'submission_fold{CURRENT_FOLD}_tta{TTA_TIMES}.csv')
             else:
                 result = classifier.inference(test_path)
             print('run time:%.4f' % (time.time()-start_time))
@@ -296,8 +295,8 @@ if __name__ == "__main__":
             if TASK == 'Plastic_Drum':
                 test_path = list(csv_reader_single('./converter/csv_file/plastic_drum_test.csv',key_col='id', value_col='label').keys())
             
-            save_path_vote = os.path.join(save_dir,f'submission_vote_tta{TTA_TIMES}.csv')
-            save_path = os.path.join(save_dir,f'submission_ave_tta{TTA_TIMES}.csv')
+            save_path_vote = os.path.join(save_dir,'submission_vote.csv')
+            save_path = os.path.join(save_dir,'submission_ave.csv')
 
             result = {
                 'pred': [],
