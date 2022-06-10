@@ -4,19 +4,26 @@ import glob
 import numpy as np
 
 def run_ad():
-    input_path = 'C:\\Users\\Joker\\Desktop\\比赛\\数据\\阿尔茨海默\\test-fake'
+    input_path = 'C:\\Users\\Joker\\Desktop\\比赛\\数据\\阿尔茨海默\\test-fake\\MRI'
     fake_result = {
       'image_id':[],
       'category_id':[]}
-    for subdir in os.scandir(input_path):
-        for subsubdir in os.scandir(subdir.path):
-            image_id = os.listdir(subsubdir.path)
-            image_id = [os.path.basename(case).split('.')[0] for case in image_id]
-            fake_result['image_id'].extend(image_id)
-            fake_result['category_id'].extend([subsubdir.name]*len(image_id))
+    
+    # for subdir in os.scandir(input_path):
+    #     for subsubdir in os.scandir(subdir.path):
+    #         image_id = os.listdir(subsubdir.path)
+    #         image_id = [os.path.basename(case).split('.')[0] for case in image_id]
+    #         fake_result['image_id'].extend(image_id)
+    #         fake_result['category_id'].extend([subsubdir.name]*len(image_id))
+
+    for subsubdir in os.scandir(input_path):
+        image_id = os.listdir(subsubdir.path)
+        image_id = [os.path.basename(case).split('.')[0] for case in image_id]
+        fake_result['image_id'].extend(image_id)
+        fake_result['category_id'].extend([subsubdir.name]*len(image_id))
       
     result_csv = pd.DataFrame(data=fake_result)
-    result_csv.to_csv('./fake_result.csv',index=False)
+    result_csv.to_csv('./ad_fake_result_mri.csv',index=False)
 
 def run_crop():
     input_path = '../dataset/Crop_Growth/test-fake'
@@ -52,5 +59,5 @@ def run_crop():
     df.to_csv(os.path.join(os.path.dirname(input_csv),'post_result.csv'),index=False)
 '''
 if __name__ == '__main__':
-    # run_ad()
-    run_crop()
+    run_ad()
+    # run_crop()

@@ -34,16 +34,16 @@ num_classes = {
 }
 
 TASK = 'Temp_Freq'
-NET_NAME = 'simplenetv8' #regnetx-200MF
-VERSION = 'v26.0' #v12.0-pretrained-mod-1-023
-DEVICE = '2'
+NET_NAME = 'simplenetv10' #regnetx-200MF
+VERSION = 'v28.0' #v12.0-pretrained-mod-1-023
+DEVICE = '0'
 # Must be True when pre-training and inference
-PRE_TRAINED = True	
+PRE_TRAINED = False	
 # 1,2,3,4
 CURRENT_FOLD = 5
 GPU_NUM = len(DEVICE.split(','))
 FOLD_NUM = 5
-TTA_TIMES = 5
+TTA_TIMES = 11
 
 
 NUM_CLASSES = num_classes[TASK]
@@ -57,7 +57,7 @@ print(WEIGHT_PATH)
 
 if PRE_TRAINED:
     # WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,'v21.0'))
-    WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION),[1,2,5])
+    WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION))
 else:
     WEIGHT_PATH_LIST = None
 

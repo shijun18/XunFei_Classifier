@@ -44,14 +44,13 @@ def diff(csv_a,csv_b,col='category_id'):
 
 if __name__ == "__main__":
 
-    save_path = './result/Temp_Freq/fusion_prob_21w_25_27w_tta5.csv'
+    save_path = './result/Temp_Freq/fusion.csv'
     if os.path.exists(save_path):
         os.remove(save_path)
     dir_list = os.listdir('./result/Temp_Freq/')
     dir_list.sort(reverse=True)
-    csv_path_list = [os.path.join('./result/Temp_Freq/',case + '/submission_ave_tta5.csv') for case in dir_list if case in ['v25.0','v21.0-warmup','v27.0-warmup']]
-    
+    csv_path_list = [os.path.join('./result/Temp_Freq/',case + '/submission_ave.csv') for case in dir_list[1:-1]]
     print(csv_path_list)
-    # vote_ensemble(csv_path_list, save_path)
-    prob_ensemble(csv_path_list, save_path)
+    vote_ensemble(csv_path_list, save_path)
+    # prob_ensemble(csv_path_list, save_path)
     print('diff %d with target'%(diff(save_path,'../converter/csv_file/temp_freq_fake_result.csv')))
