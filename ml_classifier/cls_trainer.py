@@ -1,5 +1,3 @@
-import os
-from pickle import TRUE 
 import numpy as np
 import pandas as pd
 
@@ -11,6 +9,7 @@ from sklearn.ensemble import RandomForestClassifier,ExtraTreesClassifier
 from sklearn.ensemble import BaggingClassifier
 from sklearn.neural_network import MLPClassifier
 from xgboost import XGBClassifier
+import lightgbm as lgb
 
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import KFold
@@ -39,12 +38,12 @@ params_dict = {
     'max_depth':range(3,15),
   },
   'random forest':{
-    'n_estimators':[100,200,500,1000,2000],
-    'criterion':['gini','entropy']
+    'n_estimators':[50,100,200],
+    'criterion':['entropy']
   },
   'extra trees':{
-    'n_estimators':[100],
-    'criterion':['gini','entropy']
+    'n_estimators':[50,100,200],
+    'criterion':['entropy']
   },
   'bagging':{
     'n_estimators':[100],
@@ -57,11 +56,27 @@ params_dict = {
     'learning_rate':['constant','invscaling']
   },
   'xgboost':{
-    'n_estimators':[1000],
-    'max_depth':[7],
-    'learning_rate':[0.05],
+    'booster':['dart'],
+    'objective':['binary:logistic'],
+    'n_estimators':[500],
+    'max_depth':[6],
+    'min_child_weight':[6],
+    'learning_rate':[0.01],
     'subsample':[0.8]
-  }
+  },
+  'lgb':{
+      'boosting_type': ['gbdt'],
+      'min_child_weight':[4],
+      'num_leaves':[64],
+      'tree_learner':['serial'],
+      'num_threads':[20],
+      'min_data_in_leaf': [10],
+      'learning_rate': [0.01],
+      "min_child_samples": [10],
+      "feature_fraction": [0.9],
+      "bagging_fraction": [0.8],
+      'bagging_freq':[4],
+    },
 }
 
 
@@ -115,7 +130,7 @@ class ML_Classifier(object):
         print(X)
         print(test)
         print(X.shape,test.shape)
-
+        test_score_list = []
         predictions = []
         predictions_prob = []
         for fold_num,(train_index,val_index) in enumerate(kfold.split(X)):
@@ -137,6 +152,7 @@ class ML_Classifier(object):
             train_score = f1(y_train,train_pred)
             test_pred = model.predict(x_val)
             test_score = f1(y_val,test_pred)
+            test_score_list.append(test_score)
             print("F1 Evaluation:")
             print("fold {} Best score:{}".format(fold_num + 1,best_score))
             print("fold {} Train score:{}".format(fold_num + 1,train_score))
@@ -170,7 +186,7 @@ class ML_Classifier(object):
                 # prob
                 pred_prob = model.predict_proba(test)
                 predictions_prob.append(pred_prob)
-
+        
         final_result = []
         vote_array = np.asarray(predictions).astype(int)
         final_result.extend([max(list(vote_array[:,i]),key=list(vote_array[:,i]).count) for i in range(vote_array.shape[1])])
@@ -183,7 +199,7 @@ class ML_Classifier(object):
             prob_final_result = le.inverse_transform(prob_final_result)
 
         
-        test_df = pd.read_csv(test_csv,encoding='utf-8')
+        test_df = pd.read_csv(test_csv,encoding='gbk')
         
         pred_df = {
           sub_col[0]:[case for case in test_df[id_name].values.tolist()]
@@ -221,6 +237,8 @@ class ML_Classifier(object):
             classifier = MLPClassifier(max_iter=2000,warm_start=True,random_state=0)
         elif self.clf_name == 'xgboost':
             classifier = XGBClassifier()
+        elif self.clf_name == 'lgb':
+            classifier = lgb.LGBMClassifier()
 
         return classifier  
 

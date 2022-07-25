@@ -60,6 +60,16 @@ if __name__ == '__main__':
     #             '../converter/csv_file/photo_guide_testB_fake.csv']
     # merge_csv = '../converter/csv_file/photo_guide_merge_fake.csv'
 
-    csv_list = ['../converter/csv_file/crop_growth_post.csv','../converter/csv_file/crop_growth_test_fake.csv']
-    merge_csv = '../converter/csv_file/crop_growth_post_final.csv'
+    # csv_list = ['../converter/csv_file/package_c1.csv','../converter/csv_file/package_post_c1.csv']
+    # merge_csv = '../converter/csv_file/package_post_c1_merge.csv'
+    # csv_merge(csv_list,merge_csv,key_col='id',value_col='label')
+
+
+    # csv_list = ['../converter/csv_file/family_env_v2.csv','../converter/csv_file/family_env_test_result.csv']
+    # merge_csv = '../converter/csv_file/family_env_v2_merge.csv'
+    # csv_merge(csv_list,merge_csv,key_col='id',value_col='label')
+
+
+    csv_list = ['../converter/csv_file/led_fake.csv','../converter/csv_file/led.csv']
+    merge_csv = '../converter/csv_file/led_fake_merge.csv'
     csv_merge(csv_list,merge_csv,key_col='id',value_col='label')

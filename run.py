@@ -5,10 +5,12 @@ import pandas as pd
 from data_utils.csv_reader import csv_reader_single
 from config import INIT_TRAINER, SETUP_TRAINER,TASK,NUM_CLASSES
 from config import VERSION, CURRENT_FOLD, FOLD_NUM, WEIGHT_PATH_LIST, TTA_TIMES, CSV_PATH
+from utils import calculate_flops
 
 import time
 import numpy as np
 import random
+import copy
 
 KEY = {
     'Adver_Material':['image_id','category_id'],
@@ -19,7 +21,12 @@ KEY = {
     'Farmer_Work':['image_id','category_id'],
     'Covid19':['sample_id','category_id'],
     'Family_Env':['id','label'],
-    'Plastic_Drum':['image','category_id']
+    'Plastic_Drum':['image','category_id'],
+    'Photo_Guide_V2':['image','label'],
+    'Temp_Freq_V2':['image','label'],
+    'LED':['image','label'],
+    'Package':['file','label'],
+    'Family_Env_V2':['id','label'],
 }
 
 ADD_FACTOR = {
@@ -31,7 +38,12 @@ ADD_FACTOR = {
     'Farmer_Work':0,
     'Covid19':0,
     'Family_Env':1,
-    'Plastic_Drum':0
+    'Plastic_Drum':0,
+    'Photo_Guide_V2':0,
+    'Temp_Freq_V2':0,
+    'LED':0,
+    'Package':0,
+    'Family_Env_V2':1
 }
 
 
@@ -111,17 +123,23 @@ if __name__ == "__main__":
     pre_csv_path = CSV_PATH
     pre_label_dict = csv_reader_single(pre_csv_path, key_col='id', value_col='label')
     label_dict.update(pre_label_dict)
+    # print(len(label_dict.keys()))
 
+    
     if 'balance' in VERSION:
-        path_list = []
-        path_list.append([case for case in label_dict.keys() if int(label_dict[case]) == 0])
-        path_list.append([case for case in label_dict.keys() if int(label_dict[case]) == 1])
-    else:
         path_list = list(label_dict.keys())
+        delete_num = 4500
+        for item in path_list:
+            if label_dict[item] == 0 and delete_num > 0:
+                _ = label_dict.pop(item)
+                delete_num -= 1 
+
+    path_list = list(label_dict.keys())
     
     if args.mode != 'train-cross' and args.mode != 'inf-cross':
         classifier = My_Classifier(**INIT_TRAINER)
         print(get_parameter_number(classifier.net))
+        # print(calculate_flops(copy.deepcopy(classifier.net),(1,3,256,256)))
 
     # Training with cross validation
     ###############################################
@@ -131,21 +149,16 @@ if __name__ == "__main__":
         loss_list = []
         acc_list = []
 
-        for current_fold in range(4, FOLD_NUM+1):
+        for current_fold in range(1, FOLD_NUM+1):
             print("=== Training Fold ", current_fold, " ===")
             if INIT_TRAINER['pre_trained']:
                 INIT_TRAINER['weight_path'] = WEIGHT_PATH_LIST[current_fold-1]
             
             classifier = My_Classifier(**INIT_TRAINER)
+            print(get_parameter_number(classifier.net))
+            # print(calculate_flops(copy.deepcopy(classifier.net),(1,3,256,256)))
 
-            if current_fold == 0:
-                print(get_parameter_number(classifier.net))
-
-            if 'balance' in VERSION:
-                train_path, val_path = get_cross_validation_balance(
-                    path_list, FOLD_NUM, current_fold)    
-            else:
-                train_path, val_path = get_cross_validation(
+            train_path, val_path = get_cross_validation(
                     path_list, FOLD_NUM, current_fold)
 
             SETUP_TRAINER['train_path'] = train_path
@@ -169,11 +182,7 @@ if __name__ == "__main__":
     elif args.mode == 'train':
         
         print("dataset length is %d"%len(path_list))
-        if 'balance' in VERSION:
-            train_path, val_path = get_cross_validation_balance(
-                path_list, FOLD_NUM, CURRENT_FOLD)
-        else:
-            train_path, val_path = get_cross_validation(
+        train_path, val_path = get_cross_validation(
                 path_list, FOLD_NUM, CURRENT_FOLD)
         SETUP_TRAINER['train_path'] = train_path
         SETUP_TRAINER['val_path'] = val_path
@@ -187,9 +196,7 @@ if __name__ == "__main__":
     
     elif args.mode == 'train-val':
         
-        if TASK == 'Crop_Growth':
-            val_csv_path = './converter/csv_file/crop_growth_test_fake.csv'
-        elif TASK == 'Family_Env':
+        if TASK == 'Family_Env_V2':
             val_csv_path = './converter/csv_file/family_env_test_result.csv'
         val_label_dict = csv_reader_single(val_csv_path, key_col='id', value_col='label')
         label_dict.update(val_label_dict)
@@ -254,8 +261,7 @@ if __name__ == "__main__":
             test_id = os.listdir(args.path)
             # test_id.sort(key=lambda x:eval(x.split('.')[0].split('_')[-1]))
             test_id.sort(key=lambda x:x.split('.')[0])
-            test_path = [os.path.join(args.path, case)
-                        for case in test_id]
+            test_path = [os.path.join(args.path, case) for case in test_id]
             
             if TASK == 'Plastic_Drum':
                 test_path = list(csv_reader_single('./converter/csv_file/plastic_drum_test.csv',key_col='id', value_col='label').keys())
@@ -273,7 +279,12 @@ if __name__ == "__main__":
             if TASK == 'Plastic_Drum':
                 info['group'] = [int(os.path.dirname(case).split('/')[-1]) for case in test_path]
 
-            info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
+            if TASK == 'Package':
+                info[KEY[TASK][0]] = [os.path.basename(case).split('.')[0] for case in test_path]
+            elif TASK == 'Family_Env_V2':
+                info[KEY[TASK][0]] = [os.path.basename(case).split('.')[0] + '.wav' for case in test_path]
+            else:
+                info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
             info[KEY[TASK][1]] = [int(case) + add_factor for case in result['pred']]
             for i in range(NUM_CLASSES):
                 info[f'prob_{str(i+1)}'] = np.array(result['prob'])[:,i].tolist()
@@ -295,8 +306,8 @@ if __name__ == "__main__":
             if TASK == 'Plastic_Drum':
                 test_path = list(csv_reader_single('./converter/csv_file/plastic_drum_test.csv',key_col='id', value_col='label').keys())
             
-            save_path_vote = os.path.join(save_dir,'submission_vote.csv')
-            save_path = os.path.join(save_dir,'submission_ave.csv')
+            save_path_vote = os.path.join(save_dir,f'submission_vote_tta{TTA_TIMES}.csv')
+            save_path = os.path.join(save_dir,f'submission_ave_tta{TTA_TIMES}.csv')
 
             result = {
                 'pred': [],
@@ -313,6 +324,8 @@ if __name__ == "__main__":
                 print("weight: %s"%weight_path)
                 INIT_TRAINER['weight_path'] = weight_path
                 classifier = My_Classifier(**INIT_TRAINER)
+                print(get_parameter_number(classifier.net))
+                # print(calculate_flops(copy.deepcopy(classifier.net),(1,3,256,256)))
 
                 prob_output, vote_output = classifier.inference_tta(
                     test_path, TTA_TIMES)
@@ -333,7 +346,12 @@ if __name__ == "__main__":
             if TASK == 'Plastic_Drum':
                 info['group'] = [int(os.path.dirname(case).split('/')[-1]) for case in test_path]
 
-            info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
+            if TASK == 'Package':
+                info[KEY[TASK][0]] = [os.path.basename(case).split('.')[0] for case in test_path]
+            elif TASK == 'Family_Env_V2':
+                info[KEY[TASK][0]] = [os.path.basename(case).split('.')[0] + '.wav' for case in test_path]
+            else:
+                info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
             info[KEY[TASK][1]] = [int(case) + add_factor for case in result['pred']]
             for i in range(NUM_CLASSES):
                 info[f'prob_{str(i+1)}'] = np.array(result['prob'])[:,i].tolist()
@@ -345,7 +363,12 @@ if __name__ == "__main__":
             if TASK == 'Plastic_Drum':
                 info['group'] = [int(os.path.dirname(case).split('/')[-1]) for case in test_path]
 
-            info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
+            if TASK == 'Package':
+                info[KEY[TASK][0]] = [os.path.basename(case).split('.')[0] for case in test_path]
+            elif TASK == 'Family_Env_V2':
+                info[KEY[TASK][0]] = [os.path.basename(case).split('.')[0] + '.wav' for case in test_path]
+            else:
+                info[KEY[TASK][0]] = [os.path.basename(case) for case in test_path]
             info[KEY[TASK][1]] = [int(case) + add_factor for case in result['vote_pred']]
             for i in range(NUM_CLASSES):
                 info[f'prob_{str(i+1)}'] = np.array(result['prob'])[:,i].tolist()

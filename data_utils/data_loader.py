@@ -1,9 +1,11 @@
 import sys
 sys.path.append('..')
-from PIL import Image
+from PIL import Image,ImageOps
 from torch.utils.data import Dataset
 import torch
 import random
+import warnings
+warnings.filterwarnings('ignore')
 
 class DataGenerator(Dataset):
   '''
@@ -34,6 +36,8 @@ class DataGenerator(Dataset):
           image = Image.open(self.path_list[index]).convert('RGB')
       else:
           image = Image.open(self.path_list[index]).convert('L')
+      
+      image = ImageOps.exif_transpose(image)
       if self.transform is not None:
           image = self.transform(image)
 
@@ -45,8 +49,6 @@ class DataGenerator(Dataset):
           sample = {'image':image}
       
       return sample
-
-
 
 def split_image(image):
     """
@@ -65,9 +67,8 @@ def split_image(image):
 
     return split_list
 
+
 class SplitDataGenerator(Dataset):
-
-
   '''
   Custom Dataset class for data loader.
   Args：

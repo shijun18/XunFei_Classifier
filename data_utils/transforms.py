@@ -5,6 +5,8 @@ from PIL import Image, ImageFilter
 import torchvision.transforms.functional as TF
 import random
 
+from skimage.exposure import adjust_log
+
 class RandomRotate(object):
 
     def __init__(self, angels):
@@ -75,5 +77,23 @@ class Trimming(object):
         else:
             crop = (0,0,w,h)
         new_img = image.crop(crop)
+    
+        return new_img
+
+
+class Adjust_Log(object):
+    
+    def __call__(self, image):
+        
+        image_array = np.asarray(image)/255.0
+
+        if image.mode == 'RGB':
+            image_array[...,0] = adjust_log(image_array[...,0],3)
+            image_array[...,1] = adjust_log(image_array[...,1],3)
+            image_array[...,2] = adjust_log(image_array[...,2],3)
+        else:
+            image_array = adjust_log(image_array,3)
+        
+        new_img = Image.fromarray(np.array(image_array*255).astype(np.uint8))
     
         return new_img

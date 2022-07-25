@@ -367,8 +367,8 @@ class SimpleNetV7(nn.Module):
         """
         super(SimpleNetV7, self).__init__()
         self.fea_extractor = []
-        kernel_size_list =[[(17,17),(17,17),(17,17),(17,17)],\
-                           [(13,13),(11,13),(11,13),(13,13)],\
+        kernel_size_list =[[(13,13),(13,13),(13,13),(13,13)],\
+                           [(11,11),(11,11),(11,11),(11,11)],\
                            [(9,9),(9,9),(9,9),(9,9)],\
                            [(5,5),(5,5),(5,5),(5,5)]]
 
@@ -463,7 +463,7 @@ class SimpleNetV9(nn.Module):
         Construct a SimpleNet
         """
         super(SimpleNetV9, self).__init__()
-        kernel_size_list = [(9,9),(15,15)]
+        kernel_size_list = [(7,7),(9,9)]
         dilation_list = [1,12,24,36]
         self.backbone = []
         for i in range(depth-2):
@@ -601,7 +601,7 @@ def simplenetv8(**kwargs):
 
 def simplenetv9(**kwargs):
     
-    model = SimpleNetV9(BasicBlock, [32,64,128,256], 4, **kwargs)
+    model = SimpleNetV9(BasicBlock, [16,32,64,128], 4, **kwargs)
     return model
 
 def simplenetv10(**kwargs):

@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 
+from sklearn.metrics import mean_squared_error
 from xgboost import XGBRegressor
 import lightgbm as lgb
 from sklearn.neural_network import MLPRegressor
@@ -11,13 +12,15 @@ from sklearn.linear_model import LinearRegression,BayesianRidge
 
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import KFold
-from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import StandardScaler, MinMaxScaler,PolynomialFeatures
 import warnings
 warnings.filterwarnings("ignore")
 
 def rmse(y_true,y_pred):
     return mean_squared_error(y_true=y_true,y_pred=y_pred) ** 0.5
+
+def halfmse(y_true,y_pred):
+    return mean_squared_error(y_true=y_true,y_pred=y_pred) * 0.5
 
 params_dict = {
     'random_forest':{
@@ -83,12 +86,16 @@ class ML_Classifier(object):
     self.clf = self._get_clf()  
   
 
-  def trainer(self,train_df,target_key,random_state=21,metric=None,k_fold=5,scale_factor=None,pred_flag=False,test_df=None,test_csv=None,save_path=None):
+  def trainer(self,train_df,target_key,random_state=21,metric=None,k_fold=5,scale_flag=None,pred_flag=False,test_df=None,test_csv=None,save_path=None):
     params = self.params
     fea_list= [f for f in train_df.columns if f != target_key]
     print('feature list:',fea_list)
 
     Y = np.asarray(train_df[target_key])
+    if scale_flag:
+        scaler = StandardScaler()
+        Y =  scaler.fit_transform(Y.reshape(-1, 1))
+
     X = np.asarray(train_df[fea_list])
     test = np.asarray(test_df[fea_list])
     
@@ -103,6 +110,7 @@ class ML_Classifier(object):
     print(test)
     print(X.shape,test.shape)
     predictions = []
+    add_fold_num = 0
     for fold_num,(train_index,val_index) in enumerate(kfold.split(X)):
         print(f'***********fold {fold_num+1} start!!***********')
         x_train, x_val = X[train_index], X[val_index]
@@ -112,17 +120,17 @@ class ML_Classifier(object):
                             param_grid=params,
                             cv=kfold,
                             scoring=metric,
-                            refit='neg_rmse',
+                            refit='neg_mse',
                             verbose=True,
-                            return_train_score=True)
+                            return_train_score=False)
         model = model.fit(x_train,y_train)
 
-        best_score = -1.0*model.best_score_
+        best_score = model.best_score_ 
         best_model = model.best_estimator_
         train_pred = model.predict(x_train)
-        train_score = rmse(y_train,train_pred)
+        train_score = halfmse(y_train,train_pred)
         test_pred = model.predict(x_val)
-        test_score = rmse(y_val,test_pred)
+        test_score = halfmse(y_val,test_pred)
         print("MSE Evaluation:")
         print("fold {} Best score:{}".format(fold_num + 1,best_score))
         print("fold {} Train score:{}".format(fold_num + 1,train_score))
@@ -152,15 +160,18 @@ class ML_Classifier(object):
         
         if pred_flag and test is not None:
             pred = model.predict(test)
-            predictions.append(pred)
-    predictions = sum(predictions) / k_fold
+            if test_score < 1.0:
+                add_fold_num += 1
+                print(f'add fold {fold_num+1}')
+                predictions.append(pred)
+    predictions = sum(predictions) / add_fold_num
 
-    pred_df = pd.read_csv(test_csv)
+    pred_df = pd.read_csv(test_csv, encoding='gbk')
 
-    if scale_factor is not None:
-        predictions = [round(case*scale_factor,1) for case in predictions]
-    pred_df[target_key] = predictions
-    pred_df[['group','image',target_key]].to_csv(f'{save_path}/{self.clf_name}_result.csv',index=False)
+    if scale_flag:
+        predictions = scaler.inverse_transform(predictions)
+    pred_df['label'] = predictions
+    pred_df['label'].to_csv(f'{save_path}/{self.clf_name}_result.csv',index=False)
     return best_model
 
     

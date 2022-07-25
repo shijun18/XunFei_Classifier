@@ -1,10 +1,12 @@
- 
+from utils import get_weight_path,get_weight_list
+
+
 __all__ = ['resnet18','resnet34', 'resnet50','resnest18','resnest50',\
-            'efficientnet-b5','efficientnet-b7','efficientnet-b3','efficientnet-b8','densenet121',\
+            'efficientnet-b5','efficientnet-b7','efficientnet-b2','efficientnet-b8','densenet121',\
             'densenet169','regnetx-200MF','regnetx-600MF','regnety-600MF','regnety-4.0GF',\
             'res2net50','res2net18','res2next50', 'simplenet','simplenetv2',\
             'simplenetv3','simplenetv4','simplenetv5','simplenetv6','simplenetv7',\
-            'simplenetv8','simplenetv9','simplenetv10','res2next18','se_resnet18', 'se_resnet10',\
+            'simplenetv8','simplenetv9','mobilenetv3_lite','res2next18','se_resnet18', 'se_resnet10',\
             'bilinearnet_b5','finenet50','directnet50']
 
 
@@ -13,13 +15,20 @@ data_config = {
     'Adver_Material':'./converter/csv_file/adver_material.csv',
     'Crop_Growth':'./converter/csv_file/crop_growth_post_mod.csv',
     'Photo_Guide':'./converter/csv_file/photo_guide_merge_fake.csv', #photo_guide_merge.csv
+    'Photo_Guide_V2':'./converter/csv_file/photo_guide_v2_merge.csv', #photo_guide_merge.csv
     'Leve_Disease':'./converter/csv_file/leve_disease.csv',#processed_leve_disease.csv
     'Temp_Freq':'./converter/csv_file/temp_freq.csv',
     'Farmer_Work':'./converter/csv_file/farmer_work_final_v3.csv', #farmer_work_lite_external_v3.csv
     'Covid19':'./converter/csv_file/covid19.csv',
     'Family_Env':'./converter/csv_file/family_env.csv',#'/staff/honeyk/project/XunFei_Classifier-main/converter/csv_file/Home_ev_img_all.csv',
-    'Plastic_Drum':'./converter/csv_file/plastic_drum.csv'
+    'Plastic_Drum':'./converter/csv_file/plastic_drum.csv',
+    'Temp_Freq_V2':'./converter/csv_file/temp_freq_v2.csv',
+    'LED':'./converter/csv_file/led_fake.csv',
+    'Package':'./converter/csv_file/package_post_c1_merge.csv',
+    'Family_Env_V2':'./converter/csv_file/family_env_v2_merge.csv',
+    
 }
+
 
 num_classes = {
     'Adver_Material':137,
@@ -30,34 +39,43 @@ num_classes = {
     'Farmer_Work':4,
     'Covid19':2,
     'Family_Env':6,
-    'Plastic_Drum':2
+    'Plastic_Drum':2,
+    'Photo_Guide_V2':11,
+    'Temp_Freq_V2':24,
+    'LED':2,
+    'Package':4,
+    'Family_Env_V2':6,
 }
 
-TASK = 'Temp_Freq'
-NET_NAME = 'simplenetv10' #regnetx-200MF
-VERSION = 'v28.0' #v12.0-pretrained-mod-1-023
-DEVICE = '0'
+TASK = 'Temp_Freq_V2'
+NET_NAME = 'efficientnet-b5' #regnetx-200MF
+VERSION = 'v6.0-maxpool-f1-new'
+DEVICE = '0,1'
 # Must be True when pre-training and inference
-PRE_TRAINED = False	
+PRE_TRAINED = True	
 # 1,2,3,4
-CURRENT_FOLD = 5
+CURRENT_FOLD = 1
 GPU_NUM = len(DEVICE.split(','))
 FOLD_NUM = 5
-TTA_TIMES = 11
+TTA_TIMES = 5
 
 
 NUM_CLASSES = num_classes[TASK]
-from utils import get_weight_path,get_weight_list
+
 
 CSV_PATH = data_config[TASK]
 CKPT_PATH = './ckpt/{}/{}/fold{}'.format(TASK,VERSION,str(CURRENT_FOLD))
 # CKPT_PATH = './ckpt/{}/{}/fold{}'.format(TASK,'v21.0',str(CURRENT_FOLD))
-WEIGHT_PATH = get_weight_path(CKPT_PATH)
+# WEIGHT_PATH = get_weight_path(CKPT_PATH)
+WEIGHT_PATH = get_weight_path('./ckpt/{}/{}/fold1'.format('Temp_Freq','v6.0-pretrained'))
+# WEIGHT_PATH = get_weight_path('./ckpt/{}/{}/fold4'.format('Family_Env','v6.0-pretrained-new'))
 print(WEIGHT_PATH)
 
 if PRE_TRAINED:
     # WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,'v21.0'))
-    WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION))
+    # WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format(TASK,VERSION))
+    WEIGHT_PATH_LIST = [WEIGHT_PATH]*5
+    # WEIGHT_PATH_LIST = get_weight_list('./ckpt/{}/{}/'.format('Package','v6.0-pretrained-c5-balance-new'))
 else:
     WEIGHT_PATH_LIST = None
 
@@ -66,13 +84,18 @@ else:
 MEAN = {
     'Adver_Material':[0.485, 0.456, 0.406], 
     'Crop_Growth':(0.469,0.560,0.349),
-    'Photo_Guide':(0.450),
+    'Photo_Guide':(0.450),  
     'Leve_Disease':(0.496,0.527,0.387),
     'Temp_Freq':None,
     'Farmer_Work':(0.486,0.496,0.403), #(0.486,0.496,0.403) (0.479)
     'Covid19':None,
     'Family_Env':None,
-    'Plastic_Drum':None
+    'Plastic_Drum':None,
+    'Photo_Guide_V2':None,
+    'Temp_Freq_V2':None,
+    'LED':None,
+    'Package':None,
+    'Family_Env_V2':None,
 }
 
 STD = {
@@ -84,8 +107,12 @@ STD = {
     'Farmer_Work':(0.237,0.231,0.246), #(0.237,0.231,0.246) (0.228)
     'Covid19':None,
     'Family_Env':None,
-    'Plastic_Drum':None
-    
+    'Plastic_Drum':None,
+    'Photo_Guide_V2':None,
+    'Temp_Freq_V2':None,
+    'LED':None,
+    'Package':None,
+    'Family_Env_V2':None,
 }
 
 MILESTONES = {
@@ -97,7 +124,12 @@ MILESTONES = {
     'Farmer_Work':[30,60,90],
     'Covid19':[30,60,90],
     'Family_Env':[40,70,100],#[30,60,90]
-    'Plastic_Drum':[10,20]
+    'Plastic_Drum':[10,20],
+    'Photo_Guide_V2':[30,60,90],
+    'Temp_Freq_V2':[30,60,90],
+    'LED':[30,60,90],
+    'Package':[30,60,90],
+    'Family_Env_V2':[40,70,100],
 }
 
 EPOCH = {
@@ -109,8 +141,12 @@ EPOCH = {
     'Farmer_Work':50,
     'Covid19':120,
     'Family_Env':120, #120
-    'Plastic_Drum':30
-    
+    'Plastic_Drum':30,
+    'Photo_Guide_V2':120,
+    'Temp_Freq_V2':120,
+    'LED':120,
+    'Package':120,
+    'Family_Env_V2':120
 }
 
 TRANSFORM = {
@@ -122,7 +158,12 @@ TRANSFORM = {
     'Farmer_Work':[2,6,7,8,9,10,19], #v6.0-pre v6.0-crop-pre (7,8-p=1)
     'Covid19':[2,18,6,7,8,9,19],
     'Family_Env':[20,2,3,4,7,8,9,19] if 'new' in VERSION else [20,2,4,7,8,9,19], #[20,2,3,4,7,8,9,19] v6.0-pre-new
-    'Plastic_Drum':[2,7,8,9,19]
+    'Plastic_Drum':[2,7,8,9,19],
+    'Photo_Guide_V2':[18,2,6,9,19],
+    'Temp_Freq_V2':[2,3,4,9,19] if 'new' not in VERSION else [18,2,3,4,6,7,8,9,19],
+    'LED':[18,2,3,4,5,6,7,8,9] if 'new' in VERSION else [21,2,6,7,8,9],
+    'Package':[18,2,3,7,8,12,9,19] if 'new' not in VERSION else [2,3,6,7,8,12,9],
+    'Family_Env_V2':[20,2,3,4,7,8,9,19] if 'new' in VERSION else [20,2,4,7,8,9,19],
 }
 
 SHAPE = {
@@ -134,7 +175,12 @@ SHAPE = {
     'Farmer_Work':(512,512),
     'Covid19':(256, 256),
     'Family_Env':(512,512),
-    'Plastic_Drum':(512,512)
+    'Plastic_Drum':(512,512),
+    'Photo_Guide_V2':(512,512) if 'v8.0' in VERSION else (256,256),
+    'Temp_Freq_V2':(512,512),
+    'LED':(512,512),
+    'Package':(256,256),
+    'Family_Env_V2':(512,512),
 }
 
 
@@ -147,20 +193,25 @@ CHANNEL = {
     'Farmer_Work':3, 
     'Covid19':3,
     'Family_Env':1, #3
-    'Plastic_Drum':3
+    'Plastic_Drum':3,
+    'Photo_Guide_V2':3,
+    'Temp_Freq_V2':3 if 'c1' not in VERSION else 1,
+    'LED':3 if 'c3' in VERSION else 1,
+    'Package':1,
+    'Family_Env_V2':1
 }
 
 # Arguments when trainer initial
 INIT_TRAINER = {
     'net_name': NET_NAME,
-    'lr': 1e-3 if not PRE_TRAINED else 5e-4, #1e-3
+    'lr': 1e-3, #1e-3
     'n_epoch': EPOCH[TASK],
     'channels': CHANNEL[TASK],
     'num_classes': NUM_CLASSES,
     'input_shape': SHAPE[TASK],
     'crop': 0,
     'batch_size': 32, #32
-    'num_workers': 2,
+    'num_workers': max(4,GPU_NUM*4),
     'device': DEVICE,
     'pre_trained': PRE_TRAINED,
     'weight_path': WEIGHT_PATH,
@@ -192,7 +243,9 @@ INIT_TRAINER = {
 
 # Arguments when perform the trainer
 __loss__ = ['Cross_Entropy','TopkCrossEntropy','SoftCrossEntropy','F1_Loss','TopkSoftCrossEntropy','DynamicTopkCrossEntropy','DynamicTopkSoftCrossEntropy']
-LOSS_FUN = 'Cross_Entropy'
+loss_index = eval(VERSION.split('.')[-1].split('-')[0])
+LOSS_FUN = __loss__[loss_index]
+print(f'loss func: {LOSS_FUN}')
 # Arguments when perform the trainer
 
 CLASS_WEIGHT = {
@@ -204,7 +257,12 @@ CLASS_WEIGHT = {
     'Farmer_Work':None,
     'Covid19':[1.0,2.0],
     'Family_Env':None,
-    'Plastic_Drum':None
+    'Plastic_Drum':None,
+    'Photo_Guide_V2':None,
+    'Temp_Freq_V2':None,
+    'LED':None,
+    'Package':None,
+    'Family_Env_V2':None
 }
 
 
@@ -217,7 +275,12 @@ MONITOR = {
     'Farmer_Work':'val_acc', 
     'Covid19':'val_f1',
     'Family_Env':'val_acc',
-    'Plastic_Drum':'val_acc'
+    'Plastic_Drum':'val_acc',
+    'Photo_Guide_V2':'val_f1',
+    'Temp_Freq_V2':'val_f1',
+    'LED':'val_f1',
+    'Package':'val_f1',
+    'Family_Env_V2':'val_f1'
 }
 
 SETUP_TRAINER = {
@@ -226,8 +289,8 @@ SETUP_TRAINER = {
     'optimizer': 'AdamW', 
     'loss_fun': LOSS_FUN,
     'class_weight': CLASS_WEIGHT[TASK],
-    'lr_scheduler': 'MultiStepLR', #'MultiStepLR','CosineAnnealingWarmRestarts' for fine-tune and warmup
-    'balance_sample':True if 'balance' in VERSION else False,#False
+    'lr_scheduler': 'MultiStepLR' if TASK != 'Family_Env_V2' else 'CosineAnnealingWarmRestarts', #'MultiStepLR','CosineAnnealingWarmRestarts' for fine-tune and warmup
+    'balance_sample':False,#False
     'monitor':MONITOR[TASK],
-    'repeat_factor':1.0
+    'repeat_factor':1.0 if TASK != 'Family_Env_V2' else 3.0,
 }

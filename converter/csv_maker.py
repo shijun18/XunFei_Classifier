@@ -12,8 +12,9 @@ def make_label_csv(input_path,csv_path,target_list=None):
         #     continue
         index = subdir.name
         path_list = glob.glob(os.path.join(subdir.path,"*.*g"))
-        # sub_info = [[item,eval(index)] for item in path_list]
-        sub_info = [[item,index] for item in path_list]
+        sub_info = [[item,eval(index)-1] for item in path_list]
+        # sub_info = [[os.path.basename(item),index] for item in path_list]
+        # sub_info = [[item,index] for item in path_list]
         if target_list is not None:
             if eval(index) in target_list:
                 info.extend(sub_info)
@@ -44,27 +45,28 @@ def make_csv(input_path,csv_path):
 
 if __name__ == "__main__":
   
-    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Adver_Material/train'
-    # csv_path = './csv_file/adver_material_30.csv'
-    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Crop_Growth/train'
-    # csv_path = './csv_file/crop_growth.csv'
-
-    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Photo_Guide/h_after_v_flip_train'
-    # csv_path = './csv_file/photo_guide_flip_vertical_horizontal.csv'
-    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Temp_Freq/train'
-    # csv_path = './csv_file/temp_freq.csv'
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Photo_Guide_V2/raw_data/fliped_v_train'
+    # csv_path = './csv_file/photo_guide_v2_flip_v.csv'
     # make_label_csv(input_path,csv_path)
 
-    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Farmer_Work/post-test-lite'
-    # csv_path = './csv_file/farmer_work_post_test_lite.csv'
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Photo_Guide_V2/raw_data/fliped_h_train'
+    # csv_path = './csv_file/photo_guide_v2_flip_h.csv'
     # make_label_csv(input_path,csv_path)
 
-    
-    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Leve_Disease/processed_train'
-    # csv_path = './csv_file/processed_leve_disease.csv'
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Photo_Guide_V2/raw_data/test_fake'
+    # csv_path = './csv_file/photo_guide_v2_fake.csv'
+    # make_label_csv(input_path,csv_path)
+
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/LED/train'
+    # csv_path = './csv_file/led.csv'
     # make_label_csv(input_path,csv_path)
 
 
-    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Crop_Growth/test-fake'
-    csv_path = './csv_file/crop_growth_test_fake.csv'
+    # input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Package/train-post-five/c1'
+    # csv_path = './csv_file/package_post_c1.csv'
+    # make_label_csv(input_path,csv_path)
+
+
+    input_path = '/staff/shijun/torch_projects/XunFei_Classifier/dataset/Family_Env_V2/train'
+    csv_path = './csv_file/family_env_v2.csv'
     make_label_csv(input_path,csv_path)

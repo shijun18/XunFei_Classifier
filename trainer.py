@@ -9,6 +9,7 @@ from tensorboardX import SummaryWriter
 from torchvision import transforms
 import numpy as np
 import math
+import copy
 
 from torch.nn import functional as F
 from torch.autograd import Variable
@@ -17,14 +18,18 @@ from data_utils.data_loader import DataGenerator as DataGenerator
 # from data_utils.data_loader import SplitDataGenerator as DataGenerator
 
 import torch.distributed as dist
-from PIL import Image
+from PIL import Image,ImageOps
 from utils import remove_dir, make_dir,dfs_remove_weight
 from torch.cuda.amp import autocast as autocast
 from torch.cuda.amp import GradScaler
-from data_utils.transforms import RandomRotate,DeNoise,SquarePad,AddNoise,Trimming
+from data_utils.transforms import RandomRotate,DeNoise,SquarePad,AddNoise,Trimming,Adjust_Log
 
 from sklearn import metrics
 import random
+
+import setproctitle
+import warnings
+warnings.filterwarnings('ignore')
 # GPU version.
 
 
@@ -88,22 +93,24 @@ class My_Classifier(object):
 
         os.environ['CUDA_VISIBLE_DEVICES'] = self.device
         self.net = self._get_net(self.net_name)
+        # self.calculate_flops(copy.deepcopy(self.net))
+
         if self.pre_trained:
             self._get_pre_trained(self.weight_path)
             self.loss_threshold = eval(os.path.splitext(os.path.basename(
                 self.weight_path))[0].split(':')[3].split('-')[0])
             print('loss threshold:%.4f'%self.loss_threshold)
-            self.metric = eval(os.path.splitext(os.path.basename(
-                self.weight_path))[0].split(':')[-1])
-            print('metric threshold:%.4f'%self.metric)
+            # self.metric = eval(os.path.splitext(os.path.basename(
+            #     self.weight_path))[0].split(':')[-1])
+            # print('metric threshold:%.4f'%self.metric)
         self.transform_list = [
             DeNoise(3), #1
             tr.Resize(size=self.input_shape), #2
             tr.RandomAffine(0,(0.1,0.1),(0.8,1.2)), #3
             tr.ColorJitter(brightness=.3,contrast=.3), #4
             tr.RandomPerspective(distortion_scale=0.6, p=0.5), #5
-            RandomRotate([-30, -45, -90, 0, 90, 45, 30]), #6 45/60  
-            # tr.RandomRotation((-15,+15)), #6
+            # RandomRotate([-30, -45, -90, 0, 90, 45, 30]), #6 45/60  
+            tr.RandomRotation((-5,+5)), #6
             tr.RandomHorizontalFlip(p=0.5), #7
             tr.RandomVerticalFlip(p=0.5), #8
             tr.ToTensor(), #9
@@ -118,6 +125,7 @@ class My_Classifier(object):
             tr.GaussianBlur(3), #18
             tr.RandomErasing(scale=(0.01, 0.05), ratio=(1.1, 1.3)), #19
             Trimming(),#20
+            Adjust_Log(), #21
         ]
 
         self.transform = [self.transform_list[i-1] for i in transform]
@@ -199,8 +207,11 @@ class My_Classifier(object):
         max_acc = 0.
 
 
-        early_stopping = EarlyStopping(patience=50,verbose=True,monitor=monitor,best_score=self.metric,op_type='max')
+        early_stopping = EarlyStopping(patience=30,verbose=True,monitor=monitor,best_score=self.metric,op_type='max')
         for epoch in range(self.start_epoch, self.n_epoch):
+
+            setproctitle.setproctitle('{}: {}/{}'.format('Shi Jun', epoch, self.n_epoch))
+
             train_loss, train_acc,train_f1 = self._train_on_epoch(epoch, net, loss, optimizer, train_loader,scaler)
 
             val_loss, val_acc,val_f1 = self._val_on_epoch(epoch, net, loss, val_path, label_dict)
@@ -510,7 +521,7 @@ class My_Classifier(object):
             net = self.net
         net = net.cuda()
         net.eval()
-
+        
         test_transformer = transforms.Compose(self.transform)
 
         prob_output = []
@@ -521,7 +532,8 @@ class My_Classifier(object):
                     data = Image.open(item).convert('L')
                 elif self.channels == 3:
                     data = Image.open(item).convert('RGB')
-
+                # print(data.size)
+                data = ImageOps.exif_transpose(data)
                 tta_output = []
                 binary_output = []
 
@@ -610,20 +622,28 @@ class My_Classifier(object):
             net = res2next18(input_channels=self.channels,
                             num_classes=self.num_classes,final_drop=self.drop_rate)
         elif 'efficientnet' in net_name:
-            # import timm
-            # net = timm.create_model(net_name, pretrained=True, in_chans=self.channels,num_classes=self.num_classes)
-            from efficientnet_pytorch import EfficientNet
-            if self.external_pretrained:
-                net = EfficientNet.from_pretrained(model_name=net_name,
-                                                in_channels=self.channels,
-                                                num_classes=self.num_classes,
-                                                advprop=True)
+            if 'efficientnet_lite' in net_name:
+                import model.efficientnet_lite as efficientnet_lite
+                net = efficientnet_lite.__dict__[net_name](
+                    num_classes=self.num_classes,
+                    input_channels=self.channels,
+                    pretrained=self.external_pretrained
+                )
             else:
-                net = EfficientNet.from_name(model_name=net_name)
-                num_ftrs = net._fc.in_features
-                net._fc = nn.Linear(num_ftrs, self.num_classes)
-            if 'maxpool' in net_name:
-                net._avg_pooling = nn.AdaptiveMaxPool2d(1)
+                # import timm
+                # net = timm.create_model(net_name, pretrained=True, in_chans=self.channels,num_classes=self.num_classes)
+                from efficientnet_pytorch import EfficientNet
+                if self.external_pretrained:
+                    net = EfficientNet.from_pretrained(model_name=net_name,
+                                                    in_channels=self.channels,
+                                                    num_classes=self.num_classes,
+                                                    advprop=True)
+                else:
+                    net = EfficientNet.from_name(model_name=net_name)
+                    num_ftrs = net._fc.in_features
+                    net._fc = nn.Linear(num_ftrs, self.num_classes)
+                if 'maxpool' in net_name:
+                    net._avg_pooling = nn.AdaptiveMaxPool2d(1)
 
         elif 'regnetx' in net_name:
             from pycls import models
@@ -659,6 +679,10 @@ class My_Classifier(object):
         elif net_name.startswith('bilinearnet'):
             import model.bilinearnet as bilinearnet
             net = bilinearnet.__dict__[net_name](input_channels=self.channels,num_classes=self.num_classes)
+        
+        elif net_name.startswith('mobilenetv3'):
+            import model.mobilenetv3 as mobilenetv3 
+            net = mobilenetv3.__dict__[net_name](in_chans=self.channels,num_classes=self.num_classes)
 
         return net
 
@@ -725,10 +749,30 @@ class My_Classifier(object):
         return lr_scheduler
 
     def _get_pre_trained(self, weight_path):
-        checkpoint = torch.load(weight_path)
+        checkpoint = torch.load(weight_path,map_location='cpu')
         self.net.load_state_dict(checkpoint['state_dict'])
         # self.start_epoch = checkpoint['epoch'] + 1
+        print(f'loading weight from : {weight_path}')
 
+    def calculate_flops(self,net):
+        """
+        calculate the floating point operations of the model
+        :param module: predict model
+        :param sample: image tensor that needs to be predicted
+        """
+        import sys
+        import time 
+        from thop import profile
+        
+        sample = torch.randn((1,self.channels,)+(self.input_shape))
+        print(sample.size())
+        sys.stdout = open(os.devnull, 'w')
+        runtime = time.clock()
+        _ = net(sample)
+        runtime = time.clock() - runtime
+        flops, params = profile(net, inputs=sample.unsqueeze(0))
+        sys.stdout = sys.__stdout__
+        print(f'CALCULATION RESULT :\n\tFLOPs     : {int(flops)}\n\tPARAM NUM : {int(params)}\n\tRUN TIME  : {runtime} s')
 
 # computing tools
 

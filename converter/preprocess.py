@@ -248,23 +248,23 @@ if __name__ == '__main__':
     # save_path = '../dataset/Bird_Voice/test'
     # voice_to_spectrogram(input_path,save_path,False,palette)
 
-    # input_path = '../dataset/Family_Env/audio/train'
-    # save_path = '../dataset/Family_Env/train'
-    # voice_to_spectrogram(input_path,save_path,False,palette,remove=True)
+    input_path = '../dataset/Family_Env_V2/audio/train'
+    save_path = '../dataset/Family_Env_V2/train'
+    voice_to_spectrogram(input_path,save_path,False,palette,remove=True)
 
-    # input_path = '../dataset/Family_Env/audio/test'
-    # save_path = '../dataset/Family_Env/test'
-    # voice_to_spectrogram(input_path,save_path,False,palette,remove=True)
+    input_path = '../dataset/Family_Env_V2/audio/test'
+    save_path = '../dataset/Family_Env_V2/test'
+    voice_to_spectrogram(input_path,save_path,False,palette,remove=True)
 
     
-    input_path = '../dataset/Covid19/audio/train/cough/Negative'
-    save_path = '../dataset/Covid19/raw_train/0'
-    voice_to_spectrogram(input_path,save_path,False,palette,remove=False)
+    # input_path = '../dataset/Covid19/audio/train/cough/Negative'
+    # save_path = '../dataset/Covid19/raw_train/0'
+    # voice_to_spectrogram(input_path,save_path,False,palette,remove=False)
 
-    input_path = '../dataset/Covid19/audio/train/cough/Positive'
-    save_path = '../dataset/Covid19/raw_train/1'
+    # input_path = '../dataset/Covid19/audio/train/cough/Positive'
+    # save_path = '../dataset/Covid19/raw_train/1'
     # voice_to_spectrogram_aug(input_path,save_path,False,palette,aug_times=5,remove=False)
-    voice_to_spectrogram(input_path,save_path,False,palette,remove=False)
+    # voice_to_spectrogram(input_path,save_path,False,palette,remove=False)
 
     # input_path = '../dataset/Covid19/audio/test'
     # save_path = '../dataset/Covid19/test'
